@@ -9,49 +9,35 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
 
 const DashboardAdminScreen = ({ navigation }) => {
-  const { user } = useAuth();
-  const { theme } = useTheme();
-  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({
-    totalPacientes: 0,
+    totalUsuarios: 0,
     totalDoctores: 0,
-    totalCitas: 0,
-    citasHoy: 0,
-    citasPendientes: 0,
-    citasCompletadas: 0,
   });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const { theme } = useTheme();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     cargarEstadisticas();
   }, []);
 
   const cargarEstadisticas = async () => {
-    setLoading(true);
     try {
-      const [pacientes, usuarios, citas] = await Promise.all([
-        apiClient.get('/pacientes'),
-        apiClient.get('/usuarios'),
-        apiClient.get('/citas'),
-      ]);
-
-      const doctores = usuarios.data.filter(u => u.especialidad);
-      const hoy = new Date().toISOString().split('T')[0];
-      const citasHoy = citas.data.filter(c => c.fecha_hora.startsWith(hoy));
-      const citasPendientes = citas.data.filter(c => c.estado === 'Programada' || c.estado === 'Confirmada');
-      const citasCompletadas = citas.data.filter(c => c.estado === 'Completada');
-
+      const response = await apiClient.get('/usuarios');
+      
+      const usuarios = response.data;
+      const doctores = usuarios.filter(u => u.especialidad);
+      
       setStats({
-        totalPacientes: pacientes.data.length,
+        totalUsuarios: usuarios.length,
         totalDoctores: doctores.length,
-        totalCitas: citas.data.length,
-        citasHoy: citasHoy.length,
-        citasPendientes: citasPendientes.length,
-        citasCompletadas: citasCompletadas.length,
       });
     } catch (error) {
       console.error('Error al cargar estadísticas:', error);
@@ -60,191 +46,153 @@ const DashboardAdminScreen = ({ navigation }) => {
     }
   };
 
-  const StatCard = ({ icon, iconColor, title, value, onPress }) => (
-    <TouchableOpacity
-      style={[styles.statCard, { backgroundColor: theme.colors.card }]}
-      onPress={onPress}
-    >
-      <View style={[styles.iconContainer, { backgroundColor: iconColor + '20' }]}>
-        <Ionicons name={icon} size={28} color={iconColor} />
-      </View>
-      <Text style={[styles.statValue, { color: theme.colors.text }]}>{value}</Text>
-      <Text style={[styles.statTitle, { color: theme.colors.textSecondary }]}>{title}</Text>
-    </TouchableOpacity>
-  );
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await cargarEstadisticas();
+    setRefreshing(false);
+  };
 
-  const MenuButton = ({ icon, iconColor, title, subtitle, onPress }) => (
-    <TouchableOpacity
-      style={[styles.menuButton, { backgroundColor: theme.colors.card }]}
-      onPress={onPress}
-    >
-      <View style={[styles.menuIconContainer, { backgroundColor: iconColor + '20' }]}>
-        <Ionicons name={icon} size={24} color={iconColor} />
+  const handleLogout = () => {
+    logout();
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+          Cargando...
+        </Text>
       </View>
-      <View style={styles.menuContent}>
-        <Text style={[styles.menuTitle, { color: theme.colors.text }]}>{title}</Text>
-        {subtitle && (
-          <Text style={[styles.menuSubtitle, { color: theme.colors.textSecondary }]}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
-      <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
-    </TouchableOpacity>
-  );
+    );
+  }
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={cargarEstadisticas} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-        <Text style={styles.welcomeText}>Panel de Administración</Text>
-        <Text style={styles.nameText}>{user?.nombre} {user?.apellido}</Text>
-      </View>
-
-      {/* Estadísticas Principales */}
-      <View style={styles.statsSection}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Estadísticas Generales
-        </Text>
-        <View style={styles.statsGrid}>
-          <StatCard
-            icon="people"
-            iconColor={theme.colors.primary}
-            title="Pacientes"
-            value={stats.totalPacientes}
-            onPress={() => navigation.navigate('GestionPacientes')}
-          />
-          <StatCard
-            icon="medical"
-            iconColor={theme.colors.success}
-            title="Doctores"
-            value={stats.totalDoctores}
-            onPress={() => navigation.navigate('GestionUsuarios')}
-          />
-          <StatCard
-            icon="calendar"
-            iconColor={theme.colors.warning}
-            title="Citas Totales"
-            value={stats.totalCitas}
-            onPress={() => navigation.navigate('GestionCitas')}
-          />
-          <StatCard
-            icon="today"
-            iconColor={theme.colors.info}
-            title="Citas Hoy"
-            value={stats.citasHoy}
-          />
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.welcomeText}>¡Hola Administrador!</Text>
+            <Text style={styles.nameText}>
+              {user?.nombre} {user?.apellido}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Estado de Citas */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Estado de Citas
-        </Text>
-        <View style={styles.citasStatusContainer}>
-          <View style={[styles.statusCard, { backgroundColor: theme.colors.card }]}>
-            <View style={styles.statusHeader}>
-              <Ionicons name="time" size={24} color={theme.colors.warning} />
-              <Text style={[styles.statusValue, { color: theme.colors.text }]}>
-                {stats.citasPendientes}
-              </Text>
-            </View>
-            <Text style={[styles.statusLabel, { color: theme.colors.textSecondary }]}>
-              Pendientes
-            </Text>
-          </View>
+      {/* Estadísticas */}
+      <View style={styles.statsContainer}>
+        <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
+          <Ionicons name="people" size={32} color={theme.colors.primary} />
+          <Text style={[styles.statNumber, { color: theme.colors.text }]}>
+            {stats.totalUsuarios}
+          </Text>
+          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+            Total Usuarios
+          </Text>
+        </View>
 
-          <View style={[styles.statusCard, { backgroundColor: theme.colors.card }]}>
-            <View style={styles.statusHeader}>
-              <Ionicons name="checkmark-circle" size={24} color={theme.colors.success} />
-              <Text style={[styles.statusValue, { color: theme.colors.text }]}>
-                {stats.citasCompletadas}
-              </Text>
-            </View>
-            <Text style={[styles.statusLabel, { color: theme.colors.textSecondary }]}>
-              Completadas
-            </Text>
-          </View>
+        <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
+          <Ionicons name="medical" size={32} color={theme.colors.success} />
+          <Text style={[styles.statNumber, { color: theme.colors.text }]}>
+            {stats.totalDoctores}
+          </Text>
+          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+            Doctores
+          </Text>
         </View>
       </View>
 
-      {/* Menú de Gestión */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Gestión
+      {/* Menú de opciones */}
+      <View style={styles.menuContainer}>
+        <Text style={[styles.menuTitle, { color: theme.colors.text }]}>
+          Gestión del Sistema
         </Text>
 
-        <MenuButton
-          icon="people"
-          iconColor={theme.colors.primary}
-          title="Gestión de Usuarios"
-          subtitle="Doctores, staff y administradores"
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: theme.colors.card }]}
           onPress={() => navigation.navigate('GestionUsuarios')}
-        />
+        >
+          <View style={[styles.iconCircle, { backgroundColor: theme.colors.primary + '20' }]}>
+            <Ionicons name="people-outline" size={24} color={theme.colors.primary} />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>
+              Gestión de Usuarios
+            </Text>
+            <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
+              Administrar doctores y personal
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+        </TouchableOpacity>
 
-        <MenuButton
-          icon="person-add"
-          iconColor={theme.colors.success}
-          title="Crear Usuario"
-          subtitle="Agregar nuevo doctor o administrador"
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: theme.colors.card }]}
           onPress={() => navigation.navigate('CrearUsuario')}
-        />
+        >
+          <View style={[styles.iconCircle, { backgroundColor: theme.colors.success + '20' }]}>
+            <Ionicons name="person-add-outline" size={24} color={theme.colors.success} />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>
+              Crear Usuario
+            </Text>
+            <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
+              Registrar nuevo usuario o paciente
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+        </TouchableOpacity>
 
-        <MenuButton
-          icon="people-circle"
-          iconColor={theme.colors.info}
-          title="Gestión de Pacientes"
-          subtitle="Ver y administrar pacientes"
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: theme.colors.card }]}
           onPress={() => navigation.navigate('GestionPacientes')}
-        />
+        >
+          <View style={[styles.iconCircle, { backgroundColor: theme.colors.info + '20' }]}>
+            <Ionicons name="fitness-outline" size={24} color={theme.colors.info} />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>
+              Gestión de Pacientes
+            </Text>
+            <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
+              Ver y administrar pacientes
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+        </TouchableOpacity>
 
-        <MenuButton
-          icon="calendar"
-          iconColor={theme.colors.warning}
-          title="Gestión de Citas"
-          subtitle="Todas las citas del consultorio"
+        <TouchableOpacity
+          style={[styles.menuItem, { backgroundColor: theme.colors.card }]}
           onPress={() => navigation.navigate('GestionCitas')}
-        />
-
-        <MenuButton
-          icon="stats-chart"
-          iconColor={theme.colors.danger}
-          title="Reportes"
-          subtitle="Estadísticas y reportes"
-          onPress={() => navigation.navigate('Reportes')}
-        />
+        >
+          <View style={[styles.iconCircle, { backgroundColor: theme.colors.warning + '20' }]}>
+            <Ionicons name="calendar-outline" size={24} color={theme.colors.warning} />
+          </View>
+          <View style={styles.menuContent}>
+            <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>
+              Gestión de Citas
+            </Text>
+            <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
+              Administrar todas las citas
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+        </TouchableOpacity>
       </View>
-
-      {/* Configuración */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Configuración
-        </Text>
-
-        <MenuButton
-          icon="settings"
-          iconColor={theme.colors.textSecondary}
-          title="Configuración General"
-          subtitle="Ajustes del sistema"
-          onPress={() => navigation.navigate('Configuracion')}
-        />
-
-        <MenuButton
-          icon="person"
-          iconColor={theme.colors.primary}
-          title="Mi Perfil"
-          subtitle="Información personal"
-          onPress={() => navigation.navigate('Perfil')}
-        />
-      </View>
-
-      <View style={{ height: 30 }} />
     </ScrollView>
   );
 };
@@ -253,98 +201,73 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
   header: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    padding: 30,
+    paddingTop: 50,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   welcomeText: {
     color: '#FFFFFF',
     fontSize: 16,
-    marginBottom: 4,
+    opacity: 0.9,
   },
   nameText: {
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: 'bold',
+    marginTop: 5,
   },
-  statsSection: {
+  logoutButton: {
+    padding: 8,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    padding: 15,
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
     padding: 20,
+    borderRadius: 15,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  section: {
-    padding: 20,
-    paddingTop: 0,
+  statNumber: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginTop: 10,
   },
-  sectionTitle: {
+  statLabel: {
+    fontSize: 12,
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  menuContainer: {
+    padding: 15,
+  },
+  menuTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 15,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  statCard: {
-    width: '48%',
-    aspectRatio: 1,
-    borderRadius: 15,
-    padding: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  statValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  statTitle: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  citasStatusContainer: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statusCard: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statusValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  statusLabel: {
-    fontSize: 14,
-  },
-  menuButton: {
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 15,
@@ -356,24 +279,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  menuIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  iconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
   },
   menuContent: {
     flex: 1,
+    marginLeft: 15,
   },
-  menuTitle: {
+  menuItemTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 2,
   },
-  menuSubtitle: {
-    fontSize: 14,
+  menuItemSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
   },
 });
 

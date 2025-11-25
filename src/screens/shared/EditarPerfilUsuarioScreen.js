@@ -10,183 +10,226 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
 
 const EditarPerfilUsuarioScreen = ({ navigation }) => {
-  const { user, refreshUser } = useAuth();
   const { theme } = useTheme();
-  const [saving, setSaving] = useState(false);
+  const { user, refreshUser } = useAuth();
 
-  const [formData, setFormData] = useState({
-    nombre: user?.nombre || '',
-    apellido: user?.apellido || '',
-    telefono: user?.telefono || '',
-  });
+  const [editando, setEditando] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleInputChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-  };
+  const [nombre, setNombre] = useState(user?.nombre || '');
+  const [apellido, setApellido] = useState(user?.apellido || '');
+  const [telefono, setTelefono] = useState(user?.telefono || '');
+  const [email, setEmail] = useState(user?.email || '');
 
-  const handleActualizar = async () => {
-    if (!formData.nombre.trim() || !formData.apellido.trim()) {
-      Alert.alert('Error', 'Nombre y apellido son obligatorios');
+  const handleGuardar = async () => {
+    if (!nombre || !apellido || !email) {
+      Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
       return;
     }
 
-    setSaving(true);
+    setLoading(true);
 
     try {
-      await apiClient.put('/perfil', {
-        nombre: formData.nombre.trim(),
-        apellido: formData.apellido.trim(),
-        telefono: formData.telefono.trim() || null,
+      await apiClient.put(`/usuarios/${user.id}`, {
+        nombre,
+        apellido,
+        email,
+        telefono: telefono || null,
       });
 
       await refreshUser();
-
-      Alert.alert('Éxito', 'Perfil actualizado correctamente', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      Alert.alert('Éxito', 'Perfil actualizado correctamente');
+      setEditando(false);
     } catch (error) {
       console.error('Error al actualizar perfil:', error);
-      Alert.alert('Error', error.response?.data?.detail || 'No se pudo actualizar el perfil');
+      Alert.alert(
+        'Error',
+        error.response?.data?.detail || 'No se pudo actualizar el perfil'
+      );
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
+  };
+
+  const handleCancelar = () => {
+    // Restaurar valores originales
+    setNombre(user?.nombre || '');
+    setApellido(user?.apellido || '');
+    setTelefono(user?.telefono || '');
+    setEmail(user?.email || '');
+    setEditando(false);
   };
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
     >
-      {/* Avatar */}
-      <View style={styles.avatarContainer}>
-        <View style={[styles.avatar, { backgroundColor: theme.colors.primary + '20' }]}>
-          <Ionicons name="person" size={48} color={theme.colors.primary} />
-        </View>
-        <Text style={[styles.avatarLabel, { color: theme.colors.text }]}>
-          {user?.nombre} {user?.apellido}
-        </Text>
-      </View>
-
-      {/* Información de cuenta (solo lectura) */}
-      <View style={[styles.infoCard, { backgroundColor: theme.colors.card }]}>
-        <View style={styles.infoRow}>
-          <Ionicons name="mail" size={20} color={theme.colors.textSecondary} />
-          <View style={styles.infoContent}>
-            <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-              Correo electrónico
-            </Text>
-            <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-              {user?.email}
-            </Text>
+      <View style={styles.content}>
+        {/* Avatar */}
+        <View style={styles.avatarContainer}>
+          <View style={[styles.avatar, { backgroundColor: theme.colors.primary + '20' }]}>
+            <Ionicons name="person" size={50} color={theme.colors.primary} />
           </View>
+          <Text style={[styles.userName, { color: theme.colors.text }]}>
+            {user?.nombre} {user?.apellido}
+          </Text>
+          <Text style={[styles.userRole, { color: theme.colors.textSecondary }]}>
+            {user?.especialidad ? `Dr. ${user.especialidad}` : 'Administrador'}
+          </Text>
         </View>
 
-        {user?.especialidad && (
-          <>
-            <View style={styles.divider} />
-            <View style={styles.infoRow}>
-              <Ionicons name="medical" size={20} color={theme.colors.textSecondary} />
-              <View style={styles.infoContent}>
-                <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-                  Especialidad
+        {/* Botón Editar/Cancelar */}
+        {!editando ? (
+          <TouchableOpacity
+            style={[styles.editButton, { backgroundColor: theme.colors.primary }]}
+            onPress={() => setEditando(true)}
+          >
+            <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.editButtonText}>Editar Perfil</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.cancelButton, { backgroundColor: theme.colors.error }]}
+            onPress={handleCancelar}
+          >
+            <Ionicons name="close-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.cancelButtonText}>Cancelar</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Campos de información */}
+        <View style={styles.form}>
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Nombre *</Text>
+            {editando ? (
+              <TextInput
+                style={[
+                  styles.input,
+                  { backgroundColor: theme.colors.card, color: theme.colors.text },
+                ]}
+                value={nombre}
+                onChangeText={setNombre}
+                placeholder="Nombre"
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+            ) : (
+              <View style={[styles.infoBox, { backgroundColor: theme.colors.card }]}>
+                <Text style={[styles.infoText, { color: theme.colors.text }]}>
+                  {nombre}
                 </Text>
-                <Text style={[styles.infoValue, { color: theme.colors.text }]}>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Apellido *</Text>
+            {editando ? (
+              <TextInput
+                style={[
+                  styles.input,
+                  { backgroundColor: theme.colors.card, color: theme.colors.text },
+                ]}
+                value={apellido}
+                onChangeText={setApellido}
+                placeholder="Apellido"
+                placeholderTextColor={theme.colors.textSecondary}
+              />
+            ) : (
+              <View style={[styles.infoBox, { backgroundColor: theme.colors.card }]}>
+                <Text style={[styles.infoText, { color: theme.colors.text }]}>
+                  {apellido}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Email *</Text>
+            {editando ? (
+              <TextInput
+                style={[
+                  styles.input,
+                  { backgroundColor: theme.colors.card, color: theme.colors.text },
+                ]}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="correo@ejemplo.com"
+                placeholderTextColor={theme.colors.textSecondary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            ) : (
+              <View style={[styles.infoBox, { backgroundColor: theme.colors.card }]}>
+                <Text style={[styles.infoText, { color: theme.colors.text }]}>
+                  {email}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Teléfono</Text>
+            {editando ? (
+              <TextInput
+                style={[
+                  styles.input,
+                  { backgroundColor: theme.colors.card, color: theme.colors.text },
+                ]}
+                value={telefono}
+                onChangeText={setTelefono}
+                placeholder="1234567890"
+                placeholderTextColor={theme.colors.textSecondary}
+                keyboardType="phone-pad"
+              />
+            ) : (
+              <View style={[styles.infoBox, { backgroundColor: theme.colors.card }]}>
+                <Text style={[styles.infoText, { color: theme.colors.text }]}>
+                  {telefono || 'No especificado'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {user?.especialidad && (
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>Especialidad</Text>
+              <View style={[styles.infoBox, { backgroundColor: theme.colors.card }]}>
+                <Text style={[styles.infoText, { color: theme.colors.text }]}>
                   {user.especialidad}
                 </Text>
               </View>
             </View>
-          </>
+          )}
+        </View>
+
+        {/* Botón Guardar (solo visible al editar) */}
+        {editando && (
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              { backgroundColor: theme.colors.success },
+              loading && styles.buttonDisabled,
+            ]}
+            onPress={handleGuardar}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                <Text style={styles.saveButtonText}>Guardar Cambios</Text>
+              </>
+            )}
+          </TouchableOpacity>
         )}
       </View>
-
-      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-        Información Personal
-      </Text>
-
-      <View style={styles.inputContainer}>
-        <Text style={[styles.label, { color: theme.colors.text }]}>Nombre *</Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.colors.card,
-              color: theme.colors.text,
-              borderColor: theme.colors.border,
-            },
-          ]}
-          value={formData.nombre}
-          onChangeText={(value) => handleInputChange('nombre', value)}
-          placeholder="Tu nombre"
-          placeholderTextColor={theme.colors.textSecondary}
-        />
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text style={[styles.label, { color: theme.colors.text }]}>Apellido *</Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.colors.card,
-              color: theme.colors.text,
-              borderColor: theme.colors.border,
-            },
-          ]}
-          value={formData.apellido}
-          onChangeText={(value) => handleInputChange('apellido', value)}
-          placeholder="Tu apellido"
-          placeholderTextColor={theme.colors.textSecondary}
-        />
-      </View>
-
-      <View style={styles.inputContainer}>
-        <Text style={[styles.label, { color: theme.colors.text }]}>Teléfono</Text>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.colors.card,
-              color: theme.colors.text,
-              borderColor: theme.colors.border,
-            },
-          ]}
-          value={formData.telefono}
-          onChangeText={(value) => handleInputChange('telefono', value)}
-          placeholder="442-123-4567"
-          placeholderTextColor={theme.colors.textSecondary}
-          keyboardType="phone-pad"
-        />
-      </View>
-
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: theme.colors.primary }]}
-        onPress={handleActualizar}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.buttonText}>Guardar Cambios</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.cancelButton, { borderColor: theme.colors.border }]}
-        onPress={() => navigation.goBack()}
-        disabled={saving}
-      >
-        <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>Cancelar</Text>
-      </TouchableOpacity>
-
-      <View style={{ height: 30 }} />
     </ScrollView>
   );
 };
@@ -195,7 +238,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  contentContainer: {
+  content: {
     padding: 20,
   },
   avatarContainer: {
@@ -210,42 +253,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
-  avatarLabel: {
-    fontSize: 20,
+  userName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  userRole: {
+    fontSize: 16,
+  },
+  editButton: {
+    flexDirection: 'row',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
-  infoCard: {
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 20,
-  },
-  infoRow: {
+  cancelButton: {
     flexDirection: 'row',
+    padding: 15,
+    borderRadius: 10,
     alignItems: 'center',
-  },
-  infoContent: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  infoLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 15,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    justifyContent: 'center',
+    gap: 8,
     marginBottom: 20,
   },
-  inputContainer: {
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  form: {
+    marginBottom: 20,
+  },
+  inputGroup: {
     marginBottom: 20,
   },
   label: {
@@ -254,35 +301,37 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    height: 50,
-    borderWidth: 1,
     borderRadius: 10,
-    paddingHorizontal: 15,
+    padding: 15,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  infoBox: {
+    borderRadius: 10,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  infoText: {
     fontSize: 16,
   },
-  button: {
-    height: 50,
+  saveButton: {
+    flexDirection: 'row',
+    padding: 18,
     borderRadius: 10,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 30,
   },
-  buttonText: {
+  saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  cancelButton: {
-    height: 50,
-    borderRadius: 10,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });
 

@@ -9,11 +9,14 @@
     "skipLibCheck": true,
     "module": "esnext",
     "target": "esnext",
-    "lib": ["esnext"],
+    "lib": [
+      "esnext"
+    ],
     "allowJs": true,
     "noEmit": true
   },
   "exclude": [
     "node_modules"
-  ]
+  ],
+  "extends": "expo/tsconfig.base"
 }

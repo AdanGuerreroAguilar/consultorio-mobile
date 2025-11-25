@@ -41,6 +41,7 @@ export const ThemeProvider = ({ children }) => {
       success: '#34C759',
       warning: '#FF9500',
       danger: '#FF3B30',
+      info: '#5AC8FA', // NUEVO - Color info
       border: '#E5E5E5',
     },
     dark: {
@@ -52,6 +53,7 @@ export const ThemeProvider = ({ children }) => {
       success: '#30D158',
       warning: '#FF9F0A',
       danger: '#FF453A',
+      info: '#64D2FF', // NUEVO - Color info
       border: '#38383A',
     },
   };

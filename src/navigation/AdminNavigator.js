@@ -1,81 +1,94 @@
 import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 
-// Importar pantallas de Admin
+// Pantallas Admin
 import DashboardAdminScreen from '../screens/admin/DashboardAdminScreen';
 import GestionUsuariosScreen from '../screens/admin/GestionUsuariosScreen';
 import CrearUsuarioScreen from '../screens/admin/CrearUsuarioScreen';
 import GestionPacientesScreen from '../screens/admin/GestionPacientesScreen';
 import GestionCitasScreen from '../screens/admin/GestionCitasScreen';
-import EditarPerfilUsuarioScreen from '../screens/shared/EditarPerfilUsuarioScreen';
+import EditarPerfilUsuarioScreen from '../screens/edit/EditarPerfilUsuarioScreen';
+import EditarPacienteScreen from '../screens/edit/EditarPacienteScreen';
 
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
-// Stack de Dashboard
-const DashboardStack = () => {
+function DashboardStack() {
   const { theme } = useTheme();
-  
+
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.card },
-        headerTintColor: theme.colors.text,
+        headerStyle: {
+          backgroundColor: theme.colors.primary,
+        },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
       }}
     >
-      <Stack.Screen 
-        name="DashboardMain" 
+      <Stack.Screen
+        name="DashboardAdmin"
         component={DashboardAdminScreen}
-        options={{ title: 'Panel de Administración' }}
+        options={{ title: 'Panel de Control' }}
       />
-      <Stack.Screen 
-        name="GestionUsuarios" 
+      <Stack.Screen
+        name="GestionUsuarios"
         component={GestionUsuariosScreen}
         options={{ title: 'Gestión de Usuarios' }}
       />
-      <Stack.Screen 
-        name="CrearUsuario" 
+      <Stack.Screen
+        name="CrearUsuario"
         component={CrearUsuarioScreen}
         options={{ title: 'Crear Usuario' }}
       />
-      <Stack.Screen 
-        name="GestionPacientes" 
+      <Stack.Screen
+        name="GestionPacientes"
         component={GestionPacientesScreen}
         options={{ title: 'Gestión de Pacientes' }}
       />
-      <Stack.Screen 
-        name="GestionCitas" 
+      <Stack.Screen
+        name="GestionCitas"
         component={GestionCitasScreen}
         options={{ title: 'Gestión de Citas' }}
       />
+      <Stack.Screen
+        name="EditarPaciente"
+        component={EditarPacienteScreen}
+        options={{ title: 'Editar Paciente' }}
+      />
     </Stack.Navigator>
   );
-};
+}
 
-// Stack de Perfil
-const PerfilStack = () => {
+function PerfilStack() {
   const { theme } = useTheme();
-  
+
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.card },
-        headerTintColor: theme.colors.text,
+        headerStyle: {
+          backgroundColor: theme.colors.primary,
+        },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
       }}
     >
-      <Stack.Screen 
-        name="PerfilMain" 
+      <Stack.Screen
+        name="Perfil"
         component={EditarPerfilUsuarioScreen}
         options={{ title: 'Mi Perfil' }}
       />
     </Stack.Navigator>
   );
-};
+}
 
-// Tabs principales
 const AdminNavigator = () => {
   const { theme } = useTheme();
 
@@ -83,32 +96,31 @@ const AdminNavigator = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: theme.colors.card,
-          borderTopColor: theme.colors.border,
-        },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: theme.colors.background,
+          borderTopColor: theme.colors.border,
+        },
       }}
     >
-      <Tab.Screen 
-        name="Dashboard"
+      <Tab.Screen
+        name="DashboardTab"
         component={DashboardStack}
         options={{
-          title: 'Dashboard',
+          title: 'Inicio',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="grid-outline" size={size} color={color} />
+            <Ionicons name="home" size={size} color={color} />
           ),
         }}
       />
-      
-      <Tab.Screen 
-        name="Perfil"
+      <Tab.Screen
+        name="PerfilTab"
         component={PerfilStack}
         options={{
           title: 'Perfil',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <Ionicons name="person" size={size} color={color} />
           ),
         }}
       />

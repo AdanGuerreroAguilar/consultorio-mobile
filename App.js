@@ -4,6 +4,8 @@ import { AuthProvider } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
+console.log('🚀 App iniciando...');
+
 export default function App() {
   return (
     <ThemeProvider>

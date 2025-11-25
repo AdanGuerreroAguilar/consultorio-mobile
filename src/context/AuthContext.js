@@ -18,9 +18,17 @@ export const AuthProvider = ({ children }) => {
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('user');
       
+      console.log('📥 Cargando usuario desde storage...');
+      console.log('Token:', token ? 'Existe' : 'No existe');
+      console.log('User data:', userData);
+      
       if (token && userData) {
-        setUser(JSON.parse(userData));
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
         setIsAuthenticated(true);
+        console.log('✅ Usuario cargado:', parsedUser);
+      } else {
+        console.log('❌ No hay sesión guardada');
       }
     } catch (error) {
       console.error('Error al cargar usuario:', error);
@@ -31,17 +39,27 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      console.log('🔐 Intentando login...');
       const response = await authAPI.login(email, password);
       
+      console.log('📨 Respuesta del servidor:', response);
+      
+      // Guardar en AsyncStorage
       await AsyncStorage.setItem('token', response.access_token);
       await AsyncStorage.setItem('user', JSON.stringify(response.usuario));
       
+      console.log('💾 Guardado en storage');
+      console.log('Usuario:', response.usuario);
+      
+      // Actualizar estado
       setUser(response.usuario);
       setIsAuthenticated(true);
       
+      console.log('✅ Login exitoso, estado actualizado');
+      
       return { success: true, user: response.usuario };
     } catch (error) {
-      console.error('Error en login:', error);
+      console.error('❌ Error en login:', error);
       return { 
         success: false, 
         error: error.response?.data?.detail || 'Error al iniciar sesión' 
@@ -64,10 +82,12 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      console.log('🚪 Cerrando sesión...');
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
       setUser(null);
       setIsAuthenticated(false);
+      console.log('✅ Sesión cerrada');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
@@ -83,7 +103,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // NUEVA FUNCIÓN - Refrescar usuario desde el servidor
   const refreshUser = async () => {
     try {
       const response = await authAPI.getMe();
@@ -96,6 +115,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Debug: Mostrar estado actual
+  useEffect(() => {
+    console.log('🔄 Estado AuthContext:', {
+      isAuthenticated,
+      hasUser: !!user,
+      userName: user?.nombre,
+      userRole: user?.rol
+    });
+  }, [isAuthenticated, user]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -106,7 +135,7 @@ export const AuthProvider = ({ children }) => {
         registro,
         logout,
         updateUser,
-        refreshUser, // AGREGAR AQUÍ
+        refreshUser,
       }}
     >
       {children}
