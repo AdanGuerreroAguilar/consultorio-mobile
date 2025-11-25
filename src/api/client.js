@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // IP de tu Mac en la red local
-const API_URL = 'http://192.168.1.72:8000/api';
+const API_URL = 'http://192.168.0.199:8000/api';
 
 const apiClient = axios.create({
   baseURL: API_URL,
