@@ -1,17 +1,15 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { ROLES } from '../constants/roles';
 
-// Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegistroScreen from '../screens/auth/RegistroScreen';
 
-// Navigators por rol (los crearemos después)
 import PacienteNavigator from './PacienteNavigator';
 import DoctorNavigator from './DoctorNavigator';
 import AdminNavigator from './AdminNavigator';
@@ -45,13 +43,11 @@ const AppNavigator = () => {
       }}
     >
       {!isAuthenticated ? (
-        // Auth Stack
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Registro" component={RegistroScreen} />
         </Stack.Navigator>
       ) : (
-        // Main App por rol
         <>
           {user?.rol === ROLES.PACIENTE && <PacienteNavigator />}
           {user?.rol === ROLES.DOCTOR && <DoctorNavigator />}
