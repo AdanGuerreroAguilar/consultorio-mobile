@@ -1,109 +1,119 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { ActivityIndicator, View, Text } from 'react-native';
-
-import { useAuth } from '../context/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 
-import LoginScreen from '../screens/auth/LoginScreen';
-import RegistroScreen from '../screens/auth/RegistroScreen';
+// Importar pantallas de Admin
+import DashboardAdminScreen from '../screens/admin/DashboardAdminScreen';
+import GestionUsuariosScreen from '../screens/admin/GestionUsuariosScreen';
+import CrearUsuarioScreen from '../screens/admin/CrearUsuarioScreen';
+import GestionPacientesScreen from '../screens/admin/GestionPacientesScreen';
+import GestionCitasScreen from '../screens/admin/GestionCitasScreen';
+import EditarPerfilUsuarioScreen from '../screens/shared/EditarPerfilUsuarioScreen';
 
-import PacienteNavigator from './PacienteNavigator';
-import DoctorNavigator from './DoctorNavigator';
-import AdminNavigator from './AdminNavigator';
-
+const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-const AppNavigator = () => {
-  const { user, loading, isAuthenticated } = useAuth();
+// Stack de Dashboard
+const DashboardStack = () => {
   const { theme } = useTheme();
-
-  // Función para determinar el rol del usuario
-  const getUserRole = () => {
-    if (!user) return null;
-    
-    const rol = user.rol?.toLowerCase();
-    
-    // Si tiene especialidad, es doctor
-    if (user.especialidad) {
-      return 'doctor';
-    }
-    
-    // Si el email contiene 'admin', es admin
-    if (user.email?.toLowerCase().includes('admin')) {
-      return 'admin';
-    }
-    
-    // Verificar el rol explícito
-    if (rol === 'administrador' || rol === 'admin') {
-      return 'admin';
-    }
-    
-    if (rol === 'doctor') {
-      return 'doctor';
-    }
-    
-    // Por defecto es paciente
-    return 'paciente';
-  };
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ color: theme.colors.text, marginTop: 10 }}>Cargando...</Text>
-      </View>
-    );
-  }
-
-  const userRole = getUserRole();
-
-  // Debug - Agregar esto temporalmente para ver qué está pasando
-  console.log('🔍 Usuario:', user);
-  console.log('🔍 Rol detectado:', userRole);
-  console.log('🔍 Autenticado:', isAuthenticated);
-
+  
   return (
-    <NavigationContainer
-      theme={{
-        dark: theme.dark,
-        colors: {
-          primary: theme.colors.primary,
-          background: theme.colors.background,
-          card: theme.colors.card,
-          text: theme.colors.text,
-          border: theme.colors.border,
-          notification: theme.colors.primary,
-        },
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: theme.colors.card },
+        headerTintColor: theme.colors.text,
       }}
     >
-      {!isAuthenticated || !user ? (
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Registro" component={RegistroScreen} />
-        </Stack.Navigator>
-      ) : (
-        <>
-          {userRole === 'paciente' && <PacienteNavigator />}
-          {userRole === 'doctor' && <DoctorNavigator />}
-          {userRole === 'admin' && <AdminNavigator />}
-          
-          {/* Fallback si no se detecta el rol */}
-          {!userRole && (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
-              <Text style={{ color: theme.colors.danger, fontSize: 16 }}>
-                Error: No se pudo determinar el rol del usuario
-              </Text>
-              <Text style={{ color: theme.colors.textSecondary, marginTop: 10 }}>
-                Rol recibido: {user?.rol}
-              </Text>
-            </View>
-          )}
-        </>
-      )}
-    </NavigationContainer>
+      <Stack.Screen 
+        name="DashboardMain" 
+        component={DashboardAdminScreen}
+        options={{ title: 'Panel de Administración' }}
+      />
+      <Stack.Screen 
+        name="GestionUsuarios" 
+        component={GestionUsuariosScreen}
+        options={{ title: 'Gestión de Usuarios' }}
+      />
+      <Stack.Screen 
+        name="CrearUsuario" 
+        component={CrearUsuarioScreen}
+        options={{ title: 'Crear Usuario' }}
+      />
+      <Stack.Screen 
+        name="GestionPacientes" 
+        component={GestionPacientesScreen}
+        options={{ title: 'Gestión de Pacientes' }}
+      />
+      <Stack.Screen 
+        name="GestionCitas" 
+        component={GestionCitasScreen}
+        options={{ title: 'Gestión de Citas' }}
+      />
+    </Stack.Navigator>
   );
 };
 
-export default AppNavigator;
+// Stack de Perfil
+const PerfilStack = () => {
+  const { theme } = useTheme();
+  
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: theme.colors.card },
+        headerTintColor: theme.colors.text,
+      }}
+    >
+      <Stack.Screen 
+        name="PerfilMain" 
+        component={EditarPerfilUsuarioScreen}
+        options={{ title: 'Mi Perfil' }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+// Tabs principales
+const AdminNavigator = () => {
+  const { theme } = useTheme();
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: theme.colors.card,
+          borderTopColor: theme.colors.border,
+        },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
+      }}
+    >
+      <Tab.Screen 
+        name="Dashboard"
+        component={DashboardStack}
+        options={{
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      
+      <Tab.Screen 
+        name="Perfil"
+        component={PerfilStack}
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-outline" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
+export default AdminNavigator;
