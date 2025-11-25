@@ -83,6 +83,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // NUEVA FUNCIÓN - Refrescar usuario desde el servidor
+  const refreshUser = async () => {
+    try {
+      const response = await authAPI.getMe();
+      await AsyncStorage.setItem('user', JSON.stringify(response));
+      setUser(response);
+      return { success: true };
+    } catch (error) {
+      console.error('Error al refrescar usuario:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -93,6 +106,7 @@ export const AuthProvider = ({ children }) => {
         registro,
         logout,
         updateUser,
+        refreshUser, // AGREGAR AQUÍ
       }}
     >
       {children}

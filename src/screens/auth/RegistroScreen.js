@@ -11,7 +11,9 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { GENEROS } from '../../constants/roles';
@@ -24,17 +26,34 @@ const RegistroScreen = ({ navigation }) => {
     nombre: '',
     apellido: '',
     telefono: '',
-    fecha_nacimiento: '',
+    fecha_nacimiento: null,
     genero: 'Otro',
     direccion: '',
   });
   const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
   const { registro } = useAuth();
   const { theme } = useTheme();
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setFormData({ ...formData, fecha_nacimiento: selectedDate });
+    }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const handleRegistro = async () => {
@@ -69,7 +88,7 @@ const RegistroScreen = ({ navigation }) => {
       nombre: formData.nombre.trim(),
       apellido: formData.apellido.trim(),
       telefono: formData.telefono.trim(),
-      fecha_nacimiento: formData.fecha_nacimiento || null,
+      fecha_nacimiento: formData.fecha_nacimiento ? formatDate(formData.fecha_nacimiento) : null,
       genero: formData.genero,
       direccion: formData.direccion.trim(),
     };
@@ -169,18 +188,31 @@ const RegistroScreen = ({ navigation }) => {
             />
           </View>
 
-          {/* Fecha de nacimiento */}
+          {/* Fecha de nacimiento con DatePicker */}
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
-              Fecha de nacimiento (AAAA-MM-DD)
+              Fecha de nacimiento
             </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }]}
-              placeholder="1990-01-15"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={formData.fecha_nacimiento}
-              onChangeText={(value) => handleInputChange('fecha_nacimiento', value)}
-            />
+            <TouchableOpacity
+              style={[styles.dateButton, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+              <Text style={[styles.dateText, { color: formData.fecha_nacimiento ? theme.colors.text : theme.colors.textSecondary }]}>
+                {formData.fecha_nacimiento ? formatDate(formData.fecha_nacimiento) : 'Selecciona tu fecha de nacimiento'}
+              </Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={formData.fecha_nacimiento || new Date(2000, 0, 1)}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleDateChange}
+                maximumDate={new Date()}
+                minimumDate={new Date(1920, 0, 1)}
+              />
+            )}
           </View>
 
           {/* Género */}
@@ -312,6 +344,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 15,
+    fontSize: 16,
+  },
+  dateButton: {
+    height: 50,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  dateText: {
     fontSize: 16,
   },
   pickerContainer: {

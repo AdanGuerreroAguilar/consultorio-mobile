@@ -123,17 +123,45 @@ const LoginScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Botón de prueba rápida para desarrollo */}
+        {/* Botones de prueba rápida para desarrollo */}
         <View style={styles.devButtons}>
+          <Text style={[styles.devTitle, { color: theme.colors.textSecondary }]}>
+            Pruebas rápidas:
+          </Text>
+          
           <TouchableOpacity
-            style={[styles.devButton, { backgroundColor: theme.colors.card }]}
+            style={[styles.devButton, { backgroundColor: theme.colors.danger + '20' }]}
             onPress={() => {
-              setEmail('doctor@consultorio.com');
-              setPassword('doctor123');
+              setEmail('admin@consultorio.com');
+              setPassword('Admin2025!');
             }}
           >
-            <Text style={[styles.devButtonText, { color: theme.colors.text }]}>
-              Demo Admin
+            <Text style={[styles.devButtonText, { color: theme.colors.danger }]}>
+              👤 Admin
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.devButton, { backgroundColor: theme.colors.primary + '20' }]}
+            onPress={() => {
+              setEmail('maria.lopez@consultorio.com');
+              setPassword('Pediatria2025');
+            }}
+          >
+            <Text style={[styles.devButtonText, { color: theme.colors.primary }]}>
+              👨‍⚕️ Doctor
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.devButton, { backgroundColor: theme.colors.success + '20' }]}
+            onPress={() => {
+              setEmail('paciente@test.com');
+              setPassword('paciente123');
+            }}
+          >
+            <Text style={[styles.devButtonText, { color: theme.colors.success }]}>
+              🙋 Paciente
             </Text>
           </TouchableOpacity>
         </View>
@@ -208,14 +236,22 @@ const styles = StyleSheet.create({
   devButtons: {
     marginTop: 30,
     alignItems: 'center',
+    gap: 10,
+  },
+  devTitle: {
+    fontSize: 12,
+    marginBottom: 5,
   },
   devButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
+    width: '80%',
+    alignItems: 'center',
   },
   devButtonText: {
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 
