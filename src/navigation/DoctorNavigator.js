@@ -1,189 +1,64 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
 
-// Importar pantallas de Doctor
-import HomeDoctorScreen from '../screens/doctor/HomeDoctorScreen';
+import CitasDoctorScreen from '../screens/doctor/CitasDoctorScreen';
 import ListaPacientesScreen from '../screens/doctor/ListaPacientesScreen';
-import CrearPacienteScreen from '../screens/doctor/CrearPacienteScreen';
-import EditarPacienteScreen from '../screens/doctor/EditarPacienteScreen';
-import FichaPacienteScreen from '../screens/doctor/FichaPacienteScreen';
 import CrearNotaScreen from '../screens/doctor/CrearNotaScreen';
 import RegistrarSignosScreen from '../screens/doctor/RegistrarSignosScreen';
-import CitasDoctorScreen from '../screens/doctor/CitasDoctorScreen';
+import FichaPacienteScreen from '../screens/doctor/FichaPacienteScreen';
 import EditarPerfilUsuarioScreen from '../screens/shared/EditarPerfilUsuarioScreen';
 
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
-// Stack de Inicio
-const HomeStack = () => {
-  const { theme } = useTheme();
-  
+function CitasStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.card },
-        headerTintColor: theme.colors.text,
-      }}
-    >
-      <Stack.Screen 
-        name="HomeMain" 
-        component={HomeDoctorScreen}
-        options={{ title: 'Inicio' }}
-      />
+    <Stack.Navigator>
+      <Stack.Screen name="CitasDoctor" component={CitasDoctorScreen} options={{ title: "Mis Citas" }} />
     </Stack.Navigator>
   );
-};
+}
 
-// Stack de Pacientes
-const PacientesStack = () => {
-  const { theme } = useTheme();
-  
+function PacientesStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.card },
-        headerTintColor: theme.colors.text,
-      }}
-    >
-      <Stack.Screen 
-        name="ListaPacientes" 
-        component={ListaPacientesScreen}
-        options={{ title: 'Mis Pacientes' }}
-      />
-      <Stack.Screen 
-        name="CrearPaciente" 
-        component={CrearPacienteScreen}
-        options={{ title: 'Nuevo Paciente' }}
-      />
-      <Stack.Screen 
-        name="EditarPaciente" 
-        component={EditarPacienteScreen}
-        options={{ title: 'Editar Paciente' }}
-      />
-      <Stack.Screen 
-        name="FichaPaciente" 
-        component={FichaPacienteScreen}
-        options={{ title: 'Ficha del Paciente' }}
-      />
-      <Stack.Screen 
-        name="CrearNota" 
-        component={CrearNotaScreen}
-        options={{ title: 'Nueva Nota Médica' }}
-      />
-      <Stack.Screen 
-        name="RegistrarSignos" 
-        component={RegistrarSignosScreen}
-        options={{ title: 'Registrar Signos Vitales' }}
-      />
+    <Stack.Navigator>
+      <Stack.Screen name="ListaPacientes" component={ListaPacientesScreen} options={{ title: "Pacientes" }} />
+      <Stack.Screen name="FichaPaciente" component={FichaPacienteScreen} options={{ title: "Ficha del Paciente" }} />
+      <Stack.Screen name="CrearNota" component={CrearNotaScreen} options={{ title: "Nueva Nota" }} />
+      <Stack.Screen name="RegistrarSignos" component={RegistrarSignosScreen} options={{ title: "Registrar Signos" }} />
     </Stack.Navigator>
   );
-};
+}
 
-// Stack de Citas
-const CitasStack = () => {
-  const { theme } = useTheme();
-  
+function PerfilStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.card },
-        headerTintColor: theme.colors.text,
-      }}
-    >
-      <Stack.Screen 
-        name="CitasDoctor" 
-        component={CitasDoctorScreen}
-        options={{ title: 'Mis Citas' }}
-      />
+    <Stack.Navigator>
+      <Stack.Screen name="PerfilDoctor" component={EditarPerfilUsuarioScreen} options={{ title: "Mi Perfil" }} />
     </Stack.Navigator>
   );
-};
+}
 
-// Stack de Perfil
-const PerfilStack = () => {
-  const { theme } = useTheme();
-  
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.card },
-        headerTintColor: theme.colors.text,
-      }}
-    >
-      <Stack.Screen 
-        name="PerfilMain" 
-        component={EditarPerfilUsuarioScreen}
-        options={{ title: 'Mi Perfil' }}
-      />
-    </Stack.Navigator>
-  );
-};
-
-// Tabs principales
-const DoctorNavigator = () => {
-  const { theme } = useTheme();
-
+export default function DoctorNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: theme.colors.card,
-          borderTopColor: theme.colors.border,
-        },
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textSecondary,
-      }}
+        tabBarActiveTintColor: '#007bff',
+        tabBarIcon: ({ color }) => {
+          const icons = {
+            Citas: 'calendar-outline',
+            Pacientes: 'people-outline',
+            Perfil: 'person-circle-outline'
+          };
+          return <Ionicons name={icons[route.name]} size={22} color={color} />;
+        }
+      })}
     >
-      <Tab.Screen 
-        name="Home"
-        component={HomeStack}
-        options={{
-          title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      
-      <Tab.Screen 
-        name="Pacientes"
-        component={PacientesStack}
-        options={{
-          title: 'Pacientes',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      
-      <Tab.Screen 
-        name="Citas"
-        component={CitasStack}
-        options={{
-          title: 'Citas',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      
-      <Tab.Screen 
-        name="Perfil"
-        component={PerfilStack}
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
-        }}
-      />
+      <Tab.Screen name="Citas" component={CitasStack} />
+      <Tab.Screen name="Pacientes" component={PacientesStack} />
+      <Tab.Screen name="Perfil" component={PerfilStack} />
     </Tab.Navigator>
   );
-};
-
-export default DoctorNavigator;
+}

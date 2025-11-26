@@ -336,5 +336,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+await programarNotificacion(
+  "Cita creada",
+  "Tu cita se registró correctamente.",
+  new Date(Date.now() + 5000) // 5 segundos
+);
 
 export default CrearCitaScreen;

@@ -1,131 +1,72 @@
 import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
 
-// Pantallas Admin
-import DashboardAdminScreen from '../screens/admin/DashboardAdminScreen';
+// Screens Admin
 import GestionUsuariosScreen from '../screens/admin/GestionUsuariosScreen';
-import CrearUsuarioScreen from '../screens/admin/CrearUsuarioScreen';
 import GestionPacientesScreen from '../screens/admin/GestionPacientesScreen';
 import GestionCitasScreen from '../screens/admin/GestionCitasScreen';
-import EditarPerfilUsuarioScreen from '../screens/edit/EditarPerfilUsuarioScreen';
-import EditarPacienteScreen from '../screens/edit/EditarPacienteScreen';
+import EditarPerfilUsuarioScreen from '../screens/shared/EditarPerfilUsuarioScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-function DashboardStack() {
-  const { theme } = useTheme();
-
+function UsuariosStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: theme.colors.primary,
-        },
-        headerTintColor: '#FFFFFF',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="DashboardAdmin"
-        component={DashboardAdminScreen}
-        options={{ title: 'Panel de Control' }}
-      />
-      <Stack.Screen
-        name="GestionUsuarios"
-        component={GestionUsuariosScreen}
-        options={{ title: 'Gestión de Usuarios' }}
-      />
-      <Stack.Screen
-        name="CrearUsuario"
-        component={CrearUsuarioScreen}
-        options={{ title: 'Crear Usuario' }}
-      />
-      <Stack.Screen
-        name="GestionPacientes"
-        component={GestionPacientesScreen}
-        options={{ title: 'Gestión de Pacientes' }}
-      />
-      <Stack.Screen
-        name="GestionCitas"
-        component={GestionCitasScreen}
-        options={{ title: 'Gestión de Citas' }}
-      />
-      <Stack.Screen
-        name="EditarPaciente"
-        component={EditarPacienteScreen}
-        options={{ title: 'Editar Paciente' }}
-      />
+    <Stack.Navigator>
+      <Stack.Screen name="UsuariosLista" component={GestionUsuariosScreen} options={{ title: "Usuarios" }} />
+    </Stack.Navigator>
+  );
+}
+
+function PacientesStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="PacientesLista" component={GestionPacientesScreen} options={{ title: "Pacientes" }} />
+    </Stack.Navigator>
+  );
+}
+
+function CitasStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="CitasLista" component={GestionCitasScreen} options={{ title: "Citas" }} />
     </Stack.Navigator>
   );
 }
 
 function PerfilStack() {
-  const { theme } = useTheme();
-
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: theme.colors.primary,
-        },
-        headerTintColor: '#FFFFFF',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="Perfil"
-        component={EditarPerfilUsuarioScreen}
-        options={{ title: 'Mi Perfil' }}
-      />
+    <Stack.Navigator>
+      <Stack.Screen name="PerfilAdmin" component={EditarPerfilUsuarioScreen} options={{ title: "Mi Perfil" }} />
     </Stack.Navigator>
   );
 }
 
-const AdminNavigator = () => {
-  const { theme } = useTheme();
-
+export default function AdminNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textSecondary,
-        tabBarStyle: {
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.border,
-        },
-      }}
+        tabBarStyle: { backgroundColor: '#fdfdfd', borderTopWidth: 0 },
+        tabBarActiveTintColor: '#007bff',
+        tabBarInactiveTintColor: '#999',
+        tabBarIcon: ({ color, size }) => {
+          const icons = {
+            Usuarios: 'people-outline',
+            Pacientes: 'person-outline',
+            Citas: 'calendar-outline',
+            Perfil: 'settings-outline'
+          };
+          return <Ionicons name={icons[route.name]} size={22} color={color} />;
+        }
+      })}
     >
-      <Tab.Screen
-        name="DashboardTab"
-        component={DashboardStack}
-        options={{
-          title: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="PerfilTab"
-        component={PerfilStack}
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
-          ),
-        }}
-      />
+      <Tab.Screen name="Usuarios" component={UsuariosStack} />
+      <Tab.Screen name="Pacientes" component={PacientesStack} />
+      <Tab.Screen name="Citas" component={CitasStack} />
+      <Tab.Screen name="Perfil" component={PerfilStack} />
     </Tab.Navigator>
   );
-};
-
-export default AdminNavigator;
+}

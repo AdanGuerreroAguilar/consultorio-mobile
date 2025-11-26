@@ -1,23 +1,24 @@
-import apiClient from './client';
+// src/api/auth.js
+import apiClient from './apiClient';
 
 export const authAPI = {
-  registro: async (datos) => {
-    const response = await apiClient.post('/auth/registro', datos);
-    return response.data;
+  registerPaciente: async (datos) => {
+    const res = await apiClient.post('/auth/register-paciente', datos);
+    return res.data;
   },
 
   login: async (email, password) => {
-    const response = await apiClient.post('/auth/login', { email, password });
-    return response.data;
+    const res = await apiClient.post('/auth/login', { email, password });
+    return res.data;
   },
 
-  getMe: async () => {
-    const response = await apiClient.get('/auth/me');
-    return response.data;
+  me: async () => {
+    const res = await apiClient.get('/auth/me');
+    return res.data;
   },
 
   verificarEmail: async (token) => {
-    const response = await apiClient.get(`/auth/verificar-email?token=${token}`);
-    return response.data;
+    const res = await apiClient.get(`/auth/verificar-email?token=${token}`);
+    return res.data;
   },
 };
