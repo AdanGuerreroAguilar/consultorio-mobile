@@ -6,15 +6,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 
 // Screens Admin
-import DashboardAdminScreen from '/Users/teresaolvera/Desktop/ETC/consultorio-mobile/src/screens/admin/DashboardAdminScreen.js';
-import GestionUsuariosScreen from '/Users/teresaolvera/Desktop/ETC/consultorio-mobile/src/screens/admin/GestionUsuariosScreen.js';
-import CrearUsuarioScreen from '/Users/teresaolvera/Desktop/ETC/consultorio-mobile/src/screens/admin/CrearUsuarioScreen.js';
+import DashboardAdminScreen from '../screens/admin/DashboardAdminScreen.js';
+import GestionUsuariosScreen from '../screens/admin/GestionUsuariosScreen.js';
+import CrearUsuarioScreen from '../screens/admin/CrearUsuarioScreen.js';
 import GestionPacientesScreen from '../screens/admin/GestionPacientesScreen.js';
-import CrearPacienteScreen from '/Users/teresaolvera/Desktop/ETC/consultorio-mobile/src/screens/doctor/CrearPacienteScreen.js';
-import EditarPacienteScreen from '../screens/admin/EditarPacienteScreen';
-import GestionCitasScreen from '../screens/admin/GestionCitasScreen';
-import CrearCitaScreen from '/Users/teresaolvera/Desktop/ETC/consultorio-mobile/src/screens/paciente/CrearCitaScreen.js';
-import PerfilScreen from '../screens/shared/PerfilScreen';
+
+// El archivo CrearPacienteScreen está en la carpeta doctor
+import CrearPacienteScreen from '../screens/doctor/CrearPacienteScreen.js';
+
+// Editar paciente está en shared
+import EditarPacienteScreen from '../screens/shared/EditarPacienteScreen.js';
+
+import GestionCitasScreen from '../screens/admin/GestionCitasScreen.js';
+import CrearCitaScreen from '../screens/paciente/CrearCitaScreen.js';
+
+import PerfilScreen from '../screens/shared/PerfilScreen.js';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -116,7 +122,7 @@ export default function AdminNavigator() {
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarLabelStyle: { fontSize: 11 },
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ color }) => {
           const icons = {
             Dashboard: 'grid-outline',
             Usuarios: 'people-outline',
