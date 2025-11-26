@@ -1,7 +1,8 @@
+// src/api/client.js
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// IP de tu Mac en la red local
+// ⚠️ CAMBIA ESTA IP POR LA DE TU MAC
 const API_URL = 'http://192.168.1.72:8000/api';
 
 const apiClient = axios.create({
@@ -9,7 +10,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
 // Interceptor para agregar token automáticamente
@@ -20,6 +21,7 @@ apiClient.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
     } catch (error) {
       console.error('Error al obtener token:', error);
     }
@@ -30,25 +32,22 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Interceptor para manejar errores
+// Interceptor para manejar respuestas y errores
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log(`📥 ${response.status} ${response.config.url}`);
+    return response;
+  },
   async (error) => {
     if (error.response) {
-      // Error con respuesta del servidor
-      console.error('Error API:', error.response.data);
+      console.error(`❌ Error ${error.response.status}:`, error.response.data);
       
-      // Si es 401, limpiar token y redirigir a login
       if (error.response.status === 401) {
         await AsyncStorage.removeItem('token');
         await AsyncStorage.removeItem('user');
-        // Aquí podrías disparar un evento para navegar al login
       }
     } else if (error.request) {
-      // Error de red
-      console.error('Error de red:', error.message);
-    } else {
-      console.error('Error:', error.message);
+      console.error('❌ Error de red:', error.message);
     }
     return Promise.reject(error);
   }

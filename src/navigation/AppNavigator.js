@@ -1,34 +1,46 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ActivityIndicator, View } from 'react-native';
+
+import { useAuth } from '../context/AuthContext';
 
 import LoginScreen from '../screens/auth/LoginScreen';
+import RegistroScreen from '../screens/auth/RegistroScreen';
 import AdminNavigator from './AdminNavigator';
 import DoctorNavigator from './DoctorNavigator';
 import PacienteNavigator from './PacienteNavigator';
 
+const Stack = createNativeStackNavigator();
+
 export default function AppNavigator() {
-  const [usuario, setUsuario] = useState(null);
-  const [cargando, setCargando] = useState(true);
+  const { user, loading, isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    const cargarUsuario = async () => {
-      const data = await AsyncStorage.getItem('usuario');
-      if (data) setUsuario(JSON.parse(data));
-      setCargando(false);
-    };
-    cargarUsuario();
-  }, []);
-
-  if (cargando) return null;
+  // Mostrar loading mientras se verifica la sesión
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
-      {!usuario && <LoginScreen />}
-
-      {usuario?.rol === 'admin' && <AdminNavigator />}
-      {usuario?.rol === 'doctor' && <DoctorNavigator />}
-      {usuario?.rol === 'paciente' && <PacienteNavigator />}
+      {!isAuthenticated ? (
+        // Usuario NO autenticado - mostrar pantallas de auth
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Registro" component={RegistroScreen} />
+        </Stack.Navigator>
+      ) : (
+        // Usuario autenticado - mostrar navegador según rol
+        <>
+          {user?.rol === 'admin' && <AdminNavigator />}
+          {user?.rol === 'doctor' && <DoctorNavigator />}
+          {user?.rol === 'paciente' && <PacienteNavigator />}
+        </>
+      )}
     </NavigationContainer>
   );
 }

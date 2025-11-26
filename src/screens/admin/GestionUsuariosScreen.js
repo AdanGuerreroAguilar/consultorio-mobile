@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// screens/admin/GestionUsuariosScreen.js
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -20,7 +21,7 @@ const GestionUsuariosScreen = ({ navigation }) => {
   const [usuariosFiltrados, setUsuariosFiltrados] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filtroRol, setFiltroRol] = useState('todos'); // todos, doctores, admins, staff
+  const [filtroRol, setFiltroRol] = useState('todos');
 
   useFocusEffect(
     useCallback(() => {
@@ -47,20 +48,18 @@ const GestionUsuariosScreen = ({ navigation }) => {
 
     // Filtrar por rol
     if (rol === 'doctores') {
-      filtered = filtered.filter(u => u.especialidad);
+      filtered = filtered.filter(u => u.rol === 'doctor');
     } else if (rol === 'admins') {
-      filtered = filtered.filter(u => !u.especialidad && u.email.toLowerCase().includes('admin'));
-    } else if (rol === 'staff') {
-      filtered = filtered.filter(u => !u.especialidad && !u.email.toLowerCase().includes('admin'));
+      filtered = filtered.filter(u => u.rol === 'admin');
     }
 
     // Filtrar por búsqueda
     if (busqueda.trim() !== '') {
       filtered = filtered.filter(
         u =>
-          u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-          u.apellido.toLowerCase().includes(busqueda.toLowerCase()) ||
-          u.email.toLowerCase().includes(busqueda.toLowerCase()) ||
+          u.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+          u.apellido?.toLowerCase().includes(busqueda.toLowerCase()) ||
+          u.email?.toLowerCase().includes(busqueda.toLowerCase()) ||
           u.especialidad?.toLowerCase().includes(busqueda.toLowerCase())
       );
     }
@@ -78,25 +77,23 @@ const GestionUsuariosScreen = ({ navigation }) => {
     aplicarFiltros(usuarios, searchQuery, rol);
   };
 
-  const handleToggleEstado = async (usuarioId, estadoActual) => {
+  const handleEliminar = (usuario) => {
     Alert.alert(
-      estadoActual ? 'Desactivar Usuario' : 'Activar Usuario',
-      `¿Estás seguro de que deseas ${estadoActual ? 'desactivar' : 'activar'} este usuario?`,
+      'Eliminar Usuario',
+      `¿Estás seguro de eliminar a ${usuario.nombre} ${usuario.apellido}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: estadoActual ? 'Desactivar' : 'Activar',
-          style: estadoActual ? 'destructive' : 'default',
+          text: 'Eliminar',
+          style: 'destructive',
           onPress: async () => {
             try {
-              await apiClient.put(`/usuarios/${usuarioId}`, {
-                activo: !estadoActual,
-              });
-              Alert.alert('Éxito', 'Estado actualizado correctamente');
+              await apiClient.delete(`/usuarios/${usuario.id}`);
+              Alert.alert('Éxito', 'Usuario eliminado correctamente');
               cargarUsuarios();
             } catch (error) {
-              console.error('Error al actualizar estado:', error);
-              Alert.alert('Error', 'No se pudo actualizar el estado');
+              console.error('Error al eliminar:', error);
+              Alert.alert('Error', error.response?.data?.detail || 'No se pudo eliminar');
             }
           },
         },
@@ -104,31 +101,23 @@ const GestionUsuariosScreen = ({ navigation }) => {
     );
   };
 
-  const getRolBadge = (usuario) => {
-    if (usuario.especialidad) {
-      return { text: 'Doctor', color: theme.colors.primary };
-    } else if (usuario.email.toLowerCase().includes('admin')) {
-      return { text: 'Admin', color: theme.colors.danger };
-    } else {
-      return { text: 'Staff', color: theme.colors.success };
+  const getRolInfo = (usuario) => {
+    if (usuario.rol === 'admin') {
+      return { text: 'Admin', color: '#E53935', icon: 'shield' };
+    } else if (usuario.rol === 'doctor') {
+      return { text: 'Doctor', color: '#1E88E5', icon: 'medical' };
     }
+    return { text: 'Usuario', color: '#757575', icon: 'person' };
   };
 
   const renderUsuario = ({ item }) => {
-    const rolBadge = getRolBadge(item);
+    const rolInfo = getRolInfo(item);
 
     return (
-      <TouchableOpacity
-        style={[styles.usuarioCard, { backgroundColor: theme.colors.card }]}
-        onPress={() => navigation.navigate('DetalleUsuario', { usuarioId: item.id })}
-      >
+      <View style={[styles.usuarioCard, { backgroundColor: theme.colors.card }]}>
         <View style={styles.usuarioHeader}>
-          <View style={[styles.avatar, { backgroundColor: rolBadge.color + '20' }]}>
-            <Ionicons
-              name={item.especialidad ? 'medical' : 'person'}
-              size={28}
-              color={rolBadge.color}
-            />
+          <View style={[styles.avatar, { backgroundColor: rolInfo.color + '20' }]}>
+            <Ionicons name={rolInfo.icon} size={28} color={rolInfo.color} />
           </View>
 
           <View style={styles.usuarioInfo}>
@@ -137,19 +126,11 @@ const GestionUsuariosScreen = ({ navigation }) => {
             </Text>
 
             <View style={styles.badgeRow}>
-              <View style={[styles.badge, { backgroundColor: rolBadge.color + '20' }]}>
-                <Text style={[styles.badgeText, { color: rolBadge.color }]}>
-                  {rolBadge.text}
+              <View style={[styles.badge, { backgroundColor: rolInfo.color + '20' }]}>
+                <Text style={[styles.badgeText, { color: rolInfo.color }]}>
+                  {rolInfo.text}
                 </Text>
               </View>
-
-              {!item.activo && (
-                <View style={[styles.badge, { backgroundColor: theme.colors.textSecondary + '20' }]}>
-                  <Text style={[styles.badgeText, { color: theme.colors.textSecondary }]}>
-                    Inactivo
-                  </Text>
-                </View>
-              )}
             </View>
 
             {item.especialidad && (
@@ -179,17 +160,13 @@ const GestionUsuariosScreen = ({ navigation }) => {
           </View>
 
           <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => handleToggleEstado(item.id, item.activo)}
+            style={styles.deleteButton}
+            onPress={() => handleEliminar(item)}
           >
-            <Ionicons
-              name={item.activo ? 'power' : 'power-outline'}
-              size={24}
-              color={item.activo ? theme.colors.success : theme.colors.textSecondary}
-            />
+            <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
           </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -214,79 +191,28 @@ const GestionUsuariosScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Filtros */}
+      {/* Filtros - Solo Todos, Doctores, Admins */}
       <View style={styles.filtrosContainer}>
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            { backgroundColor: theme.colors.card },
-            filtroRol === 'todos' && { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={() => handleFiltroRol('todos')}
-        >
-          <Text
+        {['todos', 'doctores', 'admins'].map((rol) => (
+          <TouchableOpacity
+            key={rol}
             style={[
-              styles.filtroText,
-              { color: filtroRol === 'todos' ? '#FFFFFF' : theme.colors.text },
+              styles.filtroButton,
+              { backgroundColor: theme.colors.card },
+              filtroRol === rol && { backgroundColor: theme.colors.primary },
             ]}
+            onPress={() => handleFiltroRol(rol)}
           >
-            Todos
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            { backgroundColor: theme.colors.card },
-            filtroRol === 'doctores' && { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={() => handleFiltroRol('doctores')}
-        >
-          <Text
-            style={[
-              styles.filtroText,
-              { color: filtroRol === 'doctores' ? '#FFFFFF' : theme.colors.text },
-            ]}
-          >
-            Doctores
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            { backgroundColor: theme.colors.card },
-            filtroRol === 'admins' && { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={() => handleFiltroRol('admins')}
-        >
-          <Text
-            style={[
-              styles.filtroText,
-              { color: filtroRol === 'admins' ? '#FFFFFF' : theme.colors.text },
-            ]}
-          >
-            Admins
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            { backgroundColor: theme.colors.card },
-            filtroRol === 'staff' && { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={() => handleFiltroRol('staff')}
-        >
-          <Text
-            style={[
-              styles.filtroText,
-              { color: filtroRol === 'staff' ? '#FFFFFF' : theme.colors.text },
-            ]}
-          >
-            Staff
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.filtroText,
+                { color: filtroRol === rol ? '#FFFFFF' : theme.colors.text },
+              ]}
+            >
+              {rol.charAt(0).toUpperCase() + rol.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Lista */}
@@ -328,8 +254,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
     gap: 10,
   },
   searchInput: {
@@ -340,11 +266,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 15,
     paddingBottom: 15,
-    gap: 8,
+    gap: 10,
   },
   filtroButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 20,
   },
   filtroText: {
@@ -353,11 +279,12 @@ const styles = StyleSheet.create({
   },
   lista: {
     padding: 15,
+    paddingBottom: 100,
   },
   usuarioCard: {
     borderRadius: 15,
     padding: 15,
-    marginBottom: 10,
+    marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -380,7 +307,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   usuarioNombre: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     marginBottom: 6,
   },
@@ -390,7 +317,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   badge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
@@ -407,7 +334,7 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 14,
   },
-  menuButton: {
+  deleteButton: {
     padding: 8,
   },
   emptyContainer: {

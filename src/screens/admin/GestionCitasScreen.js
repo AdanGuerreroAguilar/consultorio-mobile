@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// screens/admin/GestionCitasScreen.js
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,9 +17,8 @@ import apiClient from '../../api/client';
 const GestionCitasScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [citas, setCitas] = useState([]);
-  const [citasFiltradas, setCitasFiltradas] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filtroEstado, setFiltroEstado] = useState('todas'); // todas, pendientes, completadas, canceladas
+  const [filtroEstado, setFiltroEstado] = useState('todas');
 
   useFocusEffect(
     useCallback(() => {
@@ -30,11 +30,7 @@ const GestionCitasScreen = ({ navigation }) => {
     setLoading(true);
     try {
       const response = await apiClient.get('/citas');
-      const citasOrdenadas = response.data.sort(
-        (a, b) => new Date(b.fecha_hora) - new Date(a.fecha_hora)
-      );
-      setCitas(citasOrdenadas);
-      aplicarFiltro(citasOrdenadas, filtroEstado);
+      setCitas(response.data);
     } catch (error) {
       console.error('Error al cargar citas:', error);
       Alert.alert('Error', 'No se pudieron cargar las citas');
@@ -43,255 +39,175 @@ const GestionCitasScreen = ({ navigation }) => {
     }
   };
 
-  const aplicarFiltro = (data, estado) => {
-    let filtered = data;
-
-    if (estado === 'pendientes') {
-      filtered = filtered.filter(
-        (c) => c.estado === 'Programada' || c.estado === 'Confirmada'
-      );
-    } else if (estado === 'completadas') {
-      filtered = filtered.filter((c) => c.estado === 'Completada');
-    } else if (estado === 'canceladas') {
-      filtered = filtered.filter((c) => c.estado === 'Cancelada');
-    }
-
-    setCitasFiltradas(filtered);
-  };
-
-  const handleFiltro = (estado) => {
-    setFiltroEstado(estado);
-    aplicarFiltro(citas, estado);
-  };
-
-  const formatearFecha = (fechaStr) => {
-    const fecha = new Date(fechaStr);
-    return fecha.toLocaleDateString('es-MX', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const formatearHora = (fechaStr) => {
-    const fecha = new Date(fechaStr);
-    return fecha.toLocaleTimeString('es-MX', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getEstadoColor = (estado) => {
-    const colores = {
-      Programada: theme.colors.info,
-      Confirmada: theme.colors.success,
-      Completada: theme.colors.textSecondary,
-      Cancelada: theme.colors.danger,
-      En_Proceso: theme.colors.warning,
-    };
-    return colores[estado] || theme.colors.textSecondary;
-  };
-
-  const getEstadoIcon = (estado) => {
-    const iconos = {
-      Programada: 'time',
-      Confirmada: 'checkmark-circle',
-      Completada: 'checkmark-done-circle',
-      Cancelada: 'close-circle',
-      En_Proceso: 'hourglass',
-    };
-    return iconos[estado] || 'help-circle';
-  };
-
-  const handleCambiarEstado = (citaId, estadoActual) => {
-    const estados = ['Programada', 'Confirmada', 'En_Proceso', 'Completada', 'Cancelada'];
-
+  const handleCambiarEstado = (cita, nuevoEstado) => {
     Alert.alert(
-      'Cambiar Estado de Cita',
-      'Selecciona el nuevo estado:',
+      'Cambiar Estado',
+      `¿Cambiar estado a "${nuevoEstado}"?`,
       [
-        ...estados.map((estado) => ({
-          text: estado,
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar',
           onPress: async () => {
             try {
-              await apiClient.put(`/citas/${citaId}`, { estado });
-              Alert.alert('Éxito', 'Estado actualizado correctamente');
+              await apiClient.put(`/citas/${cita.id}`, { estado: nuevoEstado });
+              Alert.alert('Éxito', 'Estado actualizado');
               cargarCitas();
             } catch (error) {
-              console.error('Error al actualizar estado:', error);
               Alert.alert('Error', 'No se pudo actualizar el estado');
             }
           },
-        })),
-        {
-          text: 'Cancelar',
-          style: 'cancel',
         },
       ]
     );
   };
 
-  const renderCita = ({ item }) => {
-    const estadoColor = getEstadoColor(item.estado);
-    const estadoIcon = getEstadoIcon(item.estado);
-
-    return (
-      <TouchableOpacity
-        style={[styles.citaCard, { backgroundColor: theme.colors.card }]}
-        onPress={() => navigation.navigate('DetalleCita', { citaId: item.id })}
-      >
-        <View style={styles.citaHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.pacienteNombre, { color: theme.colors.text }]}>
-              {item.paciente_nombre} {item.paciente_apellido}
-            </Text>
-            <Text style={[styles.doctorNombre, { color: theme.colors.textSecondary }]}>
-              Dr. {item.doctor_nombre} {item.doctor_apellido}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.estadoBadge, { backgroundColor: estadoColor + '20' }]}
-            onPress={() => handleCambiarEstado(item.id, item.estado)}
-          >
-            <Ionicons name={estadoIcon} size={16} color={estadoColor} />
-            <Text style={[styles.estadoText, { color: estadoColor }]}>{item.estado}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.citaInfo}>
-          <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
-            <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
-              {formatearFecha(item.fecha_hora)}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Ionicons name="time-outline" size={16} color={theme.colors.textSecondary} />
-            <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
-              {formatearHora(item.fecha_hora)}
-            </Text>
-          </View>
-        </View>
-
-        {item.motivo && (
-          <Text style={[styles.motivo, { color: theme.colors.text }]} numberOfLines={2}>
-            {item.motivo}
-          </Text>
-        )}
-
-        {item.especialidad && (
-          <View style={[styles.especialidadBadge, { backgroundColor: theme.colors.primary + '10' }]}>
-            <Text style={[styles.especialidadText, { color: theme.colors.primary }]}>
-              {item.especialidad}
-            </Text>
-          </View>
-        )}
-      </TouchableOpacity>
+  const handleEliminar = (cita) => {
+    Alert.alert(
+      'Eliminar Cita',
+      '¿Estás seguro de eliminar esta cita?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await apiClient.delete(`/citas/${cita.id}`);
+              Alert.alert('Éxito', 'Cita eliminada');
+              cargarCitas();
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar la cita');
+            }
+          },
+        },
+      ]
     );
   };
 
-  const estadisticas = {
-    total: citas.length,
-    pendientes: citas.filter((c) => c.estado === 'Programada' || c.estado === 'Confirmada')
-      .length,
-    completadas: citas.filter((c) => c.estado === 'Completada').length,
-    canceladas: citas.filter((c) => c.estado === 'Cancelada').length,
+  const getEstadoInfo = (estado) => {
+    switch (estado) {
+      case 'programada':
+        return { color: '#1E88E5', icon: 'time-outline', text: 'Programada' };
+      case 'completada':
+        return { color: '#43A047', icon: 'checkmark-circle-outline', text: 'Completada' };
+      case 'cancelada':
+        return { color: '#E53935', icon: 'close-circle-outline', text: 'Cancelada' };
+      default:
+        return { color: '#757575', icon: 'help-circle-outline', text: estado };
+    }
+  };
+
+  const formatFecha = (fechaStr) => {
+    const fecha = new Date(fechaStr);
+    return {
+      fecha: fecha.toLocaleDateString('es-MX', { 
+        weekday: 'short', 
+        day: 'numeric', 
+        month: 'short' 
+      }),
+      hora: fecha.toLocaleTimeString('es-MX', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }),
+    };
+  };
+
+  const citasFiltradas = filtroEstado === 'todas' 
+    ? citas 
+    : citas.filter(c => c.estado === filtroEstado);
+
+  const renderCita = ({ item }) => {
+    const estadoInfo = getEstadoInfo(item.estado);
+    const { fecha, hora } = formatFecha(item.fecha_hora);
+
+    return (
+      <View style={[styles.citaCard, { backgroundColor: theme.colors.card }]}>
+        <View style={styles.citaHeader}>
+          <View style={[styles.fechaContainer, { backgroundColor: theme.colors.primary + '15' }]}>
+            <Text style={[styles.fechaText, { color: theme.colors.primary }]}>{fecha}</Text>
+            <Text style={[styles.horaText, { color: theme.colors.primary }]}>{hora}</Text>
+          </View>
+
+          <View style={styles.citaInfo}>
+            <Text style={[styles.pacienteNombre, { color: theme.colors.text }]}>
+              {item.paciente_nombre} {item.paciente_apellido}
+            </Text>
+            
+            <View style={styles.doctorRow}>
+              <Ionicons name="medical-outline" size={14} color={theme.colors.textSecondary} />
+              <Text style={[styles.doctorText, { color: theme.colors.textSecondary }]}>
+                Dr. {item.doctor_nombre} {item.doctor_apellido}
+              </Text>
+            </View>
+
+            <Text style={[styles.motivoText, { color: theme.colors.textSecondary }]} numberOfLines={2}>
+              {item.motivo}
+            </Text>
+
+            <View style={[styles.estadoBadge, { backgroundColor: estadoInfo.color + '20' }]}>
+              <Ionicons name={estadoInfo.icon} size={14} color={estadoInfo.color} />
+              <Text style={[styles.estadoText, { color: estadoInfo.color }]}>
+                {estadoInfo.text}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Acciones */}
+        <View style={styles.acciones}>
+          {item.estado === 'programada' && (
+            <>
+              <TouchableOpacity
+                style={[styles.accionButton, { backgroundColor: '#43A047' + '20' }]}
+                onPress={() => handleCambiarEstado(item, 'completada')}
+              >
+                <Ionicons name="checkmark" size={18} color="#43A047" />
+                <Text style={[styles.accionText, { color: '#43A047' }]}>Completar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.accionButton, { backgroundColor: '#FB8C00' + '20' }]}
+                onPress={() => handleCambiarEstado(item, 'cancelada')}
+              >
+                <Ionicons name="close" size={18} color="#FB8C00" />
+                <Text style={[styles.accionText, { color: '#FB8C00' }]}>Cancelar</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          <TouchableOpacity
+            style={[styles.accionButton, { backgroundColor: theme.colors.danger + '20' }]}
+            onPress={() => handleEliminar(item)}
+          >
+            <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Stats Header */}
-      <View style={[styles.statsContainer, { backgroundColor: theme.colors.primary }]}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{estadisticas.total}</Text>
-          <Text style={styles.statLabel}>Total</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{estadisticas.pendientes}</Text>
-          <Text style={styles.statLabel}>Pendientes</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{estadisticas.completadas}</Text>
-          <Text style={styles.statLabel}>Completadas</Text>
-        </View>
-      </View>
-
       {/* Filtros */}
       <View style={styles.filtrosContainer}>
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            { backgroundColor: theme.colors.card },
-            filtroEstado === 'todas' && { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={() => handleFiltro('todas')}
-        >
-          <Text
+        {['todas', 'programada', 'completada', 'cancelada'].map((estado) => (
+          <TouchableOpacity
+            key={estado}
             style={[
-              styles.filtroText,
-              { color: filtroEstado === 'todas' ? '#FFFFFF' : theme.colors.text },
+              styles.filtroButton,
+              { backgroundColor: theme.colors.card },
+              filtroEstado === estado && { backgroundColor: theme.colors.primary },
             ]}
+            onPress={() => setFiltroEstado(estado)}
           >
-            Todas
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            { backgroundColor: theme.colors.card },
-            filtroEstado === 'pendientes' && { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={() => handleFiltro('pendientes')}
-        >
-          <Text
-            style={[
-              styles.filtroText,
-              { color: filtroEstado === 'pendientes' ? '#FFFFFF' : theme.colors.text },
-            ]}
-          >
-            Pendientes
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            { backgroundColor: theme.colors.card },
-            filtroEstado === 'completadas' && { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={() => handleFiltro('completadas')}
-        >
-          <Text
-            style={[
-              styles.filtroText,
-              { color: filtroEstado === 'completadas' ? '#FFFFFF' : theme.colors.text },
-            ]}
-          >
-            Completadas
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            { backgroundColor: theme.colors.card },
-            filtroEstado === 'canceladas' && { backgroundColor: theme.colors.primary },
-          ]}
-          onPress={() => handleFiltro('canceladas')}
-        >
-          <Text
-            style={[
-              styles.filtroText,
-              { color: filtroEstado === 'canceladas' ? '#FFFFFF' : theme.colors.text },
-            ]}
-          >
-            Canceladas
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.filtroText,
+                { color: filtroEstado === estado ? '#FFFFFF' : theme.colors.text },
+              ]}
+            >
+              {estado.charAt(0).toUpperCase() + estado.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Lista */}
@@ -305,11 +221,19 @@ const GestionCitasScreen = ({ navigation }) => {
           <View style={styles.emptyContainer}>
             <Ionicons name="calendar-outline" size={64} color={theme.colors.textSecondary} />
             <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-              No hay citas con este filtro
+              No hay citas {filtroEstado !== 'todas' ? filtroEstado + 's' : ''}
             </Text>
           </View>
         }
       />
+
+      {/* Botón flotante */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        onPress={() => navigation.navigate('CrearCita')}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -318,73 +242,76 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 20,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  statLabel: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    opacity: 0.9,
-  },
   filtrosContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 15,
-    paddingVertical: 15,
+    padding: 15,
     gap: 8,
-    flexWrap: 'wrap',
   },
   filtroButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
   },
   filtroText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   lista: {
     padding: 15,
+    paddingBottom: 100,
   },
   citaCard: {
     borderRadius: 15,
     padding: 15,
-    marginBottom: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginBottom: 12,
   },
   citaHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+  },
+  fechaContainer: {
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+    minWidth: 80,
+  },
+  fechaText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  horaText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  citaInfo: {
+    flex: 1,
   },
   pacienteNombre: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
-  doctorNombre: {
+  doctorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  doctorText: {
+    fontSize: 13,
+  },
+  motivoText: {
     fontSize: 14,
+    marginBottom: 8,
   },
   estadoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
   },
@@ -392,32 +319,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  citaInfo: {
+  acciones: {
     flexDirection: 'row',
-    gap: 15,
-    marginBottom: 10,
+    justifyContent: 'flex-end',
+    marginTop: 12,
+    gap: 8,
   },
-  infoRow: {
+  accionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
   },
-  infoText: {
-    fontSize: 14,
-  },
-  motivo: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  especialidadBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  especialidadText: {
-    fontSize: 12,
+  accionText: {
+    fontSize: 13,
     fontWeight: '600',
   },
   emptyContainer: {
@@ -428,6 +345,21 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     marginTop: 15,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
 });
 

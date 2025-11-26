@@ -1,44 +1,42 @@
-import React, { useState, useEffect } from 'react';
+// screens/admin/DashboardAdminScreen.js
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
 
 const DashboardAdminScreen = ({ navigation }) => {
-  const [stats, setStats] = useState({
-    totalUsuarios: 0,
-    totalDoctores: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  
   const { theme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({
+    total_usuarios: 0,
+    total_doctores: 0,
+    total_pacientes: 0,
+    citas_hoy: 0,
+    citas_pendientes: 0,
+  });
 
-  useEffect(() => {
-    cargarEstadisticas();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      cargarStats();
+    }, [])
+  );
 
-  const cargarEstadisticas = async () => {
+  const cargarStats = async () => {
+    setLoading(true);
     try {
-      const response = await apiClient.get('/usuarios');
-      
-      const usuarios = response.data;
-      const doctores = usuarios.filter(u => u.especialidad);
-      
-      setStats({
-        totalUsuarios: usuarios.length,
-        totalDoctores: doctores.length,
-      });
+      const response = await apiClient.get('/stats');
+      setStats(response.data);
     } catch (error) {
       console.error('Error al cargar estadísticas:', error);
     } finally {
@@ -46,152 +44,122 @@ const DashboardAdminScreen = ({ navigation }) => {
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await cargarEstadisticas();
-    setRefreshing(false);
-  };
-
-  const handleLogout = () => {
-    logout();
-  };
-
-  if (loading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-          Cargando...
-        </Text>
+  const StatCard = ({ icon, title, value, color, onPress }) => (
+    <TouchableOpacity
+      style={[styles.statCard, { backgroundColor: theme.colors.card }]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
+      <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
+        <Ionicons name={icon} size={28} color={color} />
       </View>
-    );
-  }
+      <Text style={[styles.statValue, { color: theme.colors.text }]}>{value}</Text>
+      <Text style={[styles.statTitle, { color: theme.colors.textSecondary }]}>{title}</Text>
+    </TouchableOpacity>
+  );
+
+  const QuickAction = ({ icon, title, color, onPress }) => (
+    <TouchableOpacity
+      style={[styles.quickAction, { backgroundColor: theme.colors.card }]}
+      onPress={onPress}
+    >
+      <View style={[styles.quickIconContainer, { backgroundColor: color + '20' }]}>
+        <Ionicons name={icon} size={24} color={color} />
+      </View>
+      <Text style={[styles.quickTitle, { color: theme.colors.text }]}>{title}</Text>
+      <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={cargarStats} />}
+      showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.welcomeText}>¡Hola Administrador!</Text>
-            <Text style={styles.nameText}>
-              {user?.nombre} {user?.apellido}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Estadísticas */}
-      <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
-          <Ionicons name="people" size={32} color={theme.colors.primary} />
-          <Text style={[styles.statNumber, { color: theme.colors.text }]}>
-            {stats.totalUsuarios}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-            Total Usuarios
-          </Text>
-        </View>
-
-        <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
-          <Ionicons name="medical" size={32} color={theme.colors.success} />
-          <Text style={[styles.statNumber, { color: theme.colors.text }]}>
-            {stats.totalDoctores}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-            Doctores
-          </Text>
-        </View>
-      </View>
-
-      {/* Menú de opciones */}
-      <View style={styles.menuContainer}>
-        <Text style={[styles.menuTitle, { color: theme.colors.text }]}>
-          Gestión del Sistema
+      <View style={styles.header}>
+        <Text style={[styles.greeting, { color: theme.colors.textSecondary }]}>
+          ¡Bienvenido!
         </Text>
+        <Text style={[styles.userName, { color: theme.colors.text }]}>
+          {user?.nombre} {user?.apellido}
+        </Text>
+      </View>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { backgroundColor: theme.colors.card }]}
-          onPress={() => navigation.navigate('GestionUsuarios')}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.primary + '20' }]}>
-            <Ionicons name="people-outline" size={24} color={theme.colors.primary} />
-          </View>
-          <View style={styles.menuContent}>
-            <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>
-              Gestión de Usuarios
-            </Text>
-            <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
-              Administrar doctores y personal
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
+      {/* Stats Grid */}
+      <View style={styles.statsGrid}>
+        <StatCard
+          icon="people"
+          title="Usuarios"
+          value={stats.total_usuarios}
+          color="#1E88E5"
+          onPress={() => navigation.navigate('Usuarios')}
+        />
+        <StatCard
+          icon="medical"
+          title="Doctores"
+          value={stats.total_doctores}
+          color="#43A047"
+        />
+        <StatCard
+          icon="person"
+          title="Pacientes"
+          value={stats.total_pacientes}
+          color="#FB8C00"
+          onPress={() => navigation.navigate('Pacientes')}
+        />
+        <StatCard
+          icon="calendar"
+          title="Citas Hoy"
+          value={stats.citas_hoy}
+          color="#E53935"
+          onPress={() => navigation.navigate('Citas')}
+        />
+      </View>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { backgroundColor: theme.colors.card }]}
-          onPress={() => navigation.navigate('CrearUsuario')}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.success + '20' }]}>
-            <Ionicons name="person-add-outline" size={24} color={theme.colors.success} />
-          </View>
-          <View style={styles.menuContent}>
-            <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>
-              Crear Usuario
+      {/* Citas pendientes */}
+      <View style={[styles.pendingCard, { backgroundColor: theme.colors.primary + '15' }]}>
+        <View style={styles.pendingInfo}>
+          <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
+          <View style={styles.pendingText}>
+            <Text style={[styles.pendingTitle, { color: theme.colors.text }]}>
+              Citas Pendientes
             </Text>
-            <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
-              Registrar nuevo usuario o paciente
+            <Text style={[styles.pendingSubtitle, { color: theme.colors.textSecondary }]}>
+              Próximas citas programadas
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
+        </View>
+        <Text style={[styles.pendingValue, { color: theme.colors.primary }]}>
+          {stats.citas_pendientes}
+        </Text>
+      </View>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { backgroundColor: theme.colors.card }]}
-          onPress={() => navigation.navigate('GestionPacientes')}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.info + '20' }]}>
-            <Ionicons name="fitness-outline" size={24} color={theme.colors.info} />
-          </View>
-          <View style={styles.menuContent}>
-            <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>
-              Gestión de Pacientes
-            </Text>
-            <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
-              Ver y administrar pacientes
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
+      {/* Acciones rápidas */}
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+        Acciones Rápidas
+      </Text>
 
-        <TouchableOpacity
-          style={[styles.menuItem, { backgroundColor: theme.colors.card }]}
-          onPress={() => navigation.navigate('GestionCitas')}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.warning + '20' }]}>
-            <Ionicons name="calendar-outline" size={24} color={theme.colors.warning} />
-          </View>
-          <View style={styles.menuContent}>
-            <Text style={[styles.menuItemTitle, { color: theme.colors.text }]}>
-              Gestión de Citas
-            </Text>
-            <Text style={[styles.menuItemSubtitle, { color: theme.colors.textSecondary }]}>
-              Administrar todas las citas
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
+      <View style={styles.quickActions}>
+        <QuickAction
+          icon="person-add"
+          title="Nuevo Usuario"
+          color="#1E88E5"
+          onPress={() => navigation.navigate('Usuarios', { screen: 'CrearUsuario' })}
+        />
+        <QuickAction
+          icon="person-add-outline"
+          title="Nuevo Paciente"
+          color="#43A047"
+          onPress={() => navigation.navigate('Pacientes', { screen: 'CrearPaciente' })}
+        />
+        <QuickAction
+          icon="calendar-outline"
+          title="Nueva Cita"
+          color="#FB8C00"
+          onPress={() => navigation.navigate('Citas', { screen: 'CrearCita' })}
+        />
       </View>
     </ScrollView>
   );
@@ -201,102 +169,99 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-  },
   header: {
-    padding: 30,
-    paddingTop: 50,
+    padding: 20,
+    paddingTop: 10,
   },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  greeting: {
+    fontSize: 14,
   },
-  welcomeText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    opacity: 0.9,
-  },
-  nameText: {
-    color: '#FFFFFF',
-    fontSize: 24,
+  userName: {
+    fontSize: 26,
     fontWeight: 'bold',
-    marginTop: 5,
   },
-  logoutButton: {
-    padding: 8,
-  },
-  statsContainer: {
+  statsGrid: {
     flexDirection: 'row',
-    padding: 15,
-    gap: 10,
+    flexWrap: 'wrap',
+    paddingHorizontal: 15,
+    gap: 12,
   },
   statCard: {
-    flex: 1,
-    padding: 20,
+    width: '47%',
+    padding: 18,
     borderRadius: 15,
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  statLabel: {
-    fontSize: 12,
-    marginTop: 5,
-    textAlign: 'center',
-  },
-  menuContainer: {
-    padding: 15,
-  },
-  menuTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  iconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 12,
   },
-  menuContent: {
-    flex: 1,
-    marginLeft: 15,
+  statValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 4,
   },
-  menuItemTitle: {
+  statTitle: {
+    fontSize: 13,
+  },
+  pendingCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    margin: 20,
+    padding: 18,
+    borderRadius: 15,
+  },
+  pendingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  pendingText: {},
+  pendingTitle: {
     fontSize: 16,
     fontWeight: '600',
   },
-  menuItemSubtitle: {
+  pendingSubtitle: {
     fontSize: 13,
-    marginTop: 2,
+  },
+  pendingValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    paddingHorizontal: 20,
+    marginBottom: 15,
+  },
+  quickActions: {
+    paddingHorizontal: 20,
+    gap: 12,
+    paddingBottom: 30,
+  },
+  quickAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+  },
+  quickIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  quickTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

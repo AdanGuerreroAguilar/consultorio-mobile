@@ -1,24 +1,20 @@
 // src/api/auth.js
-import apiClient from './apiClient';
+import apiClient from './client';
 
 export const authAPI = {
-  registerPaciente: async (datos) => {
-    const res = await apiClient.post('/auth/register-paciente', datos);
-    return res.data;
-  },
-
   login: async (email, password) => {
     const res = await apiClient.post('/auth/login', { email, password });
     return res.data;
   },
 
-  me: async () => {
+  getMe: async () => {
     const res = await apiClient.get('/auth/me');
     return res.data;
   },
 
-  verificarEmail: async (token) => {
-    const res = await apiClient.get(`/auth/verificar-email?token=${token}`);
+  registro: async (datos) => {
+    // Registrar como paciente (sin cuenta de usuario)
+    const res = await apiClient.post('/pacientes', datos);
     return res.data;
   },
 };

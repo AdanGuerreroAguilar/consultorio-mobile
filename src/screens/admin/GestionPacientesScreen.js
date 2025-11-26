@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// screens/admin/GestionPacientesScreen.js
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,29 +7,31 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
-  Alert,
-  ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import apiClient from '../../api/client';
 
 const GestionPacientesScreen = ({ navigation }) => {
+  const { theme } = useTheme();
   const [pacientes, setPacientes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { theme } = useTheme();
+  useFocusEffect(
+    useCallback(() => {
+      cargarPacientes();
+    }, [])
+  );
 
-  useEffect(() => {
-    cargarPacientes();
-  }, []);
-
-  const cargarPacientes = async () => {
+  const cargarPacientes = async (search = '') => {
+    setLoading(true);
     try {
-      const response = await apiClient.get('/pacientes');
+      const url = search ? `/pacientes?search=${search}` : '/pacientes';
+      const response = await apiClient.get(url);
       setPacientes(response.data);
     } catch (error) {
       console.error('Error al cargar pacientes:', error);
@@ -38,15 +41,16 @@ const GestionPacientesScreen = ({ navigation }) => {
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await cargarPacientes();
-    setRefreshing(false);
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    if (text.length > 2 || text.length === 0) {
+      cargarPacientes(text);
+    }
   };
 
-  const handleEliminarPaciente = (paciente) => {
+  const handleEliminar = (paciente) => {
     Alert.alert(
-      'Confirmar eliminación',
+      'Eliminar Paciente',
       `¿Estás seguro de eliminar a ${paciente.nombre} ${paciente.apellido}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -59,11 +63,7 @@ const GestionPacientesScreen = ({ navigation }) => {
               Alert.alert('Éxito', 'Paciente eliminado correctamente');
               cargarPacientes();
             } catch (error) {
-              console.error('Error al eliminar paciente:', error);
-              Alert.alert(
-                'Error',
-                error.response?.data?.detail || 'No se pudo eliminar el paciente'
-              );
+              Alert.alert('Error', 'No se pudo eliminar el paciente');
             }
           },
         },
@@ -71,128 +71,127 @@ const GestionPacientesScreen = ({ navigation }) => {
     );
   };
 
-  const handleEditarPaciente = (paciente) => {
-    navigation.navigate('EditarPaciente', { paciente });
+  const calcularEdad = (fechaNacimiento) => {
+    if (!fechaNacimiento) return null;
+    const hoy = new Date();
+    const nacimiento = new Date(fechaNacimiento);
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const mes = hoy.getMonth() - nacimiento.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+      edad--;
+    }
+    return edad;
   };
 
-  const pacientesFiltrados = pacientes.filter(
-    (paciente) =>
-      paciente.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      paciente.apellido.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      paciente.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const renderPaciente = ({ item }) => {
+    const edad = calcularEdad(item.fecha_nacimiento);
 
-  const renderPaciente = ({ item }) => (
-    <View style={[styles.pacienteCard, { backgroundColor: theme.colors.card }]}>
-      <View style={styles.pacienteInfo}>
-        <View style={[styles.avatar, { backgroundColor: theme.colors.primary + '20' }]}>
-          <Ionicons name="person" size={24} color={theme.colors.primary} />
-        </View>
-        
-        <View style={styles.infoContent}>
-          <Text style={[styles.pacienteNombre, { color: theme.colors.text }]}>
-            {item.nombre} {item.apellido}
-          </Text>
-          <View style={styles.infoRow}>
-            <Ionicons name="mail-outline" size={14} color={theme.colors.textSecondary} />
-            <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
-              {item.email}
+    return (
+      <TouchableOpacity
+        style={[styles.pacienteCard, { backgroundColor: theme.colors.card }]}
+        onPress={() => navigation.navigate('EditarPaciente', { paciente: item })}
+      >
+        <View style={styles.pacienteHeader}>
+          <View style={[styles.avatar, { backgroundColor: theme.colors.primary + '20' }]}>
+            <Text style={[styles.avatarText, { color: theme.colors.primary }]}>
+              {item.nombre?.charAt(0)}{item.apellido?.charAt(0)}
             </Text>
           </View>
-          {item.telefono && (
+
+          <View style={styles.pacienteInfo}>
+            <Text style={[styles.pacienteNombre, { color: theme.colors.text }]}>
+              {item.nombre} {item.apellido}
+            </Text>
+
             <View style={styles.infoRow}>
-              <Ionicons name="call-outline" size={14} color={theme.colors.textSecondary} />
-              <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
-                {item.telefono}
-              </Text>
+              {edad && (
+                <View style={styles.badge}>
+                  <Ionicons name="calendar-outline" size={12} color={theme.colors.textSecondary} />
+                  <Text style={[styles.badgeText, { color: theme.colors.textSecondary }]}>
+                    {edad} años
+                  </Text>
+                </View>
+              )}
+              {item.genero && (
+                <View style={styles.badge}>
+                  <Ionicons 
+                    name={item.genero === 'Masculino' ? 'male' : item.genero === 'Femenino' ? 'female' : 'person'} 
+                    size={12} 
+                    color={theme.colors.textSecondary} 
+                  />
+                  <Text style={[styles.badgeText, { color: theme.colors.textSecondary }]}>
+                    {item.genero}
+                  </Text>
+                </View>
+              )}
+              {item.tipo_sangre && (
+                <View style={[styles.badge, { backgroundColor: '#E53935' + '20' }]}>
+                  <Ionicons name="water" size={12} color="#E53935" />
+                  <Text style={[styles.badgeText, { color: '#E53935' }]}>
+                    {item.tipo_sangre}
+                  </Text>
+                </View>
+              )}
             </View>
-          )}
-          {item.fecha_nacimiento && (
-            <View style={styles.infoRow}>
-              <Ionicons name="calendar-outline" size={14} color={theme.colors.textSecondary} />
-              <Text style={[styles.infoText, { color: theme.colors.textSecondary }]}>
-                {new Date(item.fecha_nacimiento).toLocaleDateString('es-MX')}
-              </Text>
-            </View>
-          )}
+
+            {item.telefono && (
+              <View style={styles.contactRow}>
+                <Ionicons name="call-outline" size={14} color={theme.colors.textSecondary} />
+                <Text style={[styles.contactText, { color: theme.colors.textSecondary }]}>
+                  {item.telefono}
+                </Text>
+              </View>
+            )}
+
+            {item.email && (
+              <View style={styles.contactRow}>
+                <Ionicons name="mail-outline" size={14} color={theme.colors.textSecondary} />
+                <Text style={[styles.contactText, { color: theme.colors.textSecondary }]}>
+                  {item.email}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleEliminar(item)}
+          >
+            <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
+          </TouchableOpacity>
         </View>
-      </View>
-
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: theme.colors.info + '20' }]}
-          onPress={() => handleEditarPaciente(item)}
-        >
-          <Ionicons name="create-outline" size={20} color={theme.colors.info} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: theme.colors.error + '20' }]}
-          onPress={() => handleEliminarPaciente(item)}
-        >
-          <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={[styles.loadingText, { color: theme.colors.text }]}>
-          Cargando pacientes...
-        </Text>
-      </View>
+      </TouchableOpacity>
     );
-  }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Buscador */}
       <View style={styles.searchContainer}>
         <View style={[styles.searchBox, { backgroundColor: theme.colors.card }]}>
-          <Ionicons name="search" size={20} color={theme.colors.textSecondary} />
+          <Ionicons name="search-outline" size={20} color={theme.colors.textSecondary} />
           <TextInput
             style={[styles.searchInput, { color: theme.colors.text }]}
             placeholder="Buscar paciente..."
             placeholderTextColor={theme.colors.textSecondary}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearch}
           />
-          {searchQuery !== '' && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => handleSearch('')}>
               <Ionicons name="close-circle" size={20} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Estadísticas */}
-      <View style={styles.statsBar}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: theme.colors.primary }]}>
-            {pacientesFiltrados.length}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-            Pacientes
-          </Text>
-        </View>
-      </View>
-
-      {/* Lista de pacientes */}
+      {/* Lista */}
       <FlatList
-        data={pacientesFiltrados}
+        data={pacientes}
         renderItem={renderPaciente}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.colors.primary]}
-          />
-        }
+        contentContainerStyle={styles.lista}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => cargarPacientes(searchQuery)} />}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="people-outline" size={64} color={theme.colors.textSecondary} />
@@ -202,6 +201,14 @@ const GestionPacientesScreen = ({ navigation }) => {
           </View>
         }
       />
+
+      {/* Botón flotante */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        onPress={() => navigation.navigate('CrearPaciente')}
+      >
+        <Ionicons name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -210,62 +217,33 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-  },
   searchContainer: {
     padding: 15,
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 12,
     gap: 10,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
   },
-  statsBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 15,
-    paddingBottom: 15,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  statLabel: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  listContainer: {
+  lista: {
     padding: 15,
-    paddingTop: 0,
+    paddingBottom: 100,
   },
   pacienteCard: {
     borderRadius: 15,
     padding: 15,
-    marginBottom: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginBottom: 12,
   },
-  pacienteInfo: {
+  pacienteHeader: {
     flexDirection: 'row',
-    marginBottom: 10,
+    alignItems: 'flex-start',
   },
   avatar: {
     width: 50,
@@ -273,37 +251,49 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 15,
   },
-  infoContent: {
+  avatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  pacienteInfo: {
     flex: 1,
-    marginLeft: 12,
   },
   pacienteNombre: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   infoRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  badgeText: {
+    fontSize: 12,
+  },
+  contactRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 2,
+    marginTop: 4,
   },
-  infoText: {
-    fontSize: 13,
+  contactText: {
+    fontSize: 14,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
+  deleteButton: {
+    padding: 8,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -313,6 +303,21 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     marginTop: 15,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
 });
 
