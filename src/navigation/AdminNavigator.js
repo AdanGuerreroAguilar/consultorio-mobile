@@ -5,26 +5,28 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 
-// Screens Admin
-import DashboardAdminScreen from '../screens/admin/DashboardAdminScreen.js';
-import GestionUsuariosScreen from '../screens/admin/GestionUsuariosScreen.js';
-import CrearUsuarioScreen from '../screens/admin/CrearUsuarioScreen.js';
-import GestionPacientesScreen from '../screens/admin/GestionPacientesScreen.js';
+// ADMIN SCREENS
+import DashboardAdminScreen from '../screens/admin/DashboardAdminScreen';
+import GestionUsuariosScreen from '../screens/admin/GestionUsuariosScreen';
+import CrearUsuarioScreen from '../screens/admin/CrearUsuarioScreen';
+import EditarUsuarioScreen from '../screens/admin/EditarUsuarioScreen'; 
+import GestionPacientesScreen from '../screens/admin/GestionPacientesScreen';
+import EditarPacienteScreen from '../screens/admin/EditarPacienteScreen'; 
+import GestionCitasScreen from '../screens/admin/GestionCitasScreen';
 
-// El archivo CrearPacienteScreen está en la carpeta doctor
-import CrearPacienteScreen from '../screens/doctor/CrearPacienteScreen.js';
+// DOCTOR / PACIENTE SCREENS USADAS POR ADMIN
+import CrearPacienteScreen from '../screens/admin/CrearPacienteScreen';
+import CrearCitaScreen from '../screens/admin/CrearCitaScreen';
 
-// Editar paciente está en shared
-import EditarPacienteScreen from '../screens/shared/EditarPacienteScreen.js';
-
-import GestionCitasScreen from '../screens/admin/GestionCitasScreen.js';
-import CrearCitaScreen from '../screens/paciente/CrearCitaScreen.js';
-
-import PerfilScreen from '../screens/shared/PerfilScreen.js';
+// PERFIL
+import PerfilScreen from '../screens/shared/PerfilScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+// ----------------------------
+// DASHBOARD
+// ----------------------------
 function DashboardStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -37,6 +39,9 @@ function DashboardStack() {
   );
 }
 
+// ----------------------------
+// USUARIOS
+// ----------------------------
 function UsuariosStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -50,10 +55,18 @@ function UsuariosStack() {
         component={CrearUsuarioScreen} 
         options={{ title: "Nuevo Usuario" }} 
       />
+      <Stack.Screen 
+        name="EditarUsuario" 
+        component={EditarUsuarioScreen} 
+        options={{ title: "Editar Usuario" }} 
+      />
     </Stack.Navigator>
   );
 }
 
+// ----------------------------
+// PACIENTES
+// ----------------------------
 function PacientesStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -76,6 +89,9 @@ function PacientesStack() {
   );
 }
 
+// ----------------------------
+// CITAS
+// ----------------------------
 function CitasStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -93,6 +109,9 @@ function CitasStack() {
   );
 }
 
+// ----------------------------
+// PERFIL / CERRAR SESIÓN
+// ----------------------------
 function PerfilStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -105,6 +124,9 @@ function PerfilStack() {
   );
 }
 
+// ----------------------------
+// NAVEGADOR PRINCIPAL ADMIN
+// ----------------------------
 export default function AdminNavigator() {
   const { theme } = useTheme();
   

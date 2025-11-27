@@ -1,121 +1,128 @@
 // navigation/DoctorNavigator.js
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../context/ThemeContext';
 
-// Screens Doctor
-import HomeDoctorScreen from '../screens/doctor/HomeDoctorScreen';
-import CitasDoctorScreen from '../screens/doctor/CitasDoctorScreen';
-import ListaPacientesScreen from '../screens/doctor/ListaPacientesScreen';
-import FichaPacienteScreen from '../screens/doctor/FichaPacienteScreen';
-import CrearNotaScreen from '../screens/doctor/CrearNotaScreen';
-import RegistrarSignosScreen from '../screens/doctor/RegistrarSignosScreen';
-import CrearCitaScreen from '../screens/admin/CrearCitaScreen';
-import PerfilScreen from '../screens/shared/PerfilScreen';
+import React from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../context/ThemeContext";
+
+// SCREENS DEL DOCTOR
+import HomeDoctorScreen from "../screens/doctor/HomeDoctorScreen";
+import ListaPacientesScreen from "../screens/doctor/ListaPacientesScreen";
+import FichaPacienteScreen from "../screens/doctor/FichaPacienteScreen";
+import EditarPacienteScreen from "../screens/doctor/EditarPacienteScreen";
+import RegistrarSignosScreen from "../screens/doctor/RegistrarSignosScreen";
+
+// ✅ RUTA RELATIVA CORRECTA (NO ABSOLUTA)
+import CrearNotaScreen from "../screens/doctor/CrearNotaScreen";
+
+// Perfil compartido
+import PerfilScreen from "../screens/shared/PerfilScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-function InicioStack() {
+// ------------------------------
+// HOME DEL DOCTOR
+// ------------------------------
+function DashboardStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
-      <Stack.Screen 
-        name="HomeDoctor" 
-        component={HomeDoctorScreen} 
-        options={{ title: "Inicio" }} 
+    <Stack.Navigator>
+      <Stack.Screen
+        name="HomeDoctor"
+        component={HomeDoctorScreen}
+        options={{ title: "Inicio" }}
       />
     </Stack.Navigator>
   );
 }
 
-function CitasStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
-      <Stack.Screen 
-        name="CitasDoctor" 
-        component={CitasDoctorScreen} 
-        options={{ title: "Mis Citas" }} 
-      />
-      <Stack.Screen 
-        name="CrearCita" 
-        component={CrearCitaScreen} 
-        options={{ title: "Nueva Cita" }} 
-      />
-    </Stack.Navigator>
-  );
-}
-
+// ------------------------------
+// PACIENTES DEL DOCTOR
+// ------------------------------
 function PacientesStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
-      <Stack.Screen 
-        name="ListaPacientes" 
-        component={ListaPacientesScreen} 
-        options={{ title: "Pacientes" }} 
+    <Stack.Navigator>
+      <Stack.Screen
+        name="ListaPacientes"
+        component={ListaPacientesScreen}
+        options={{ title: "Pacientes" }}
       />
-      <Stack.Screen 
-        name="FichaPaciente" 
-        component={FichaPacienteScreen} 
-        options={{ title: "Ficha del Paciente" }} 
+
+      <Stack.Screen
+        name="FichaPaciente"
+        component={FichaPacienteScreen}
+        options={{ title: "Ficha del Paciente" }}
       />
-      <Stack.Screen 
-        name="CrearNota" 
-        component={CrearNotaScreen} 
-        options={{ title: "Nueva Nota" }} 
+
+      <Stack.Screen
+        name="EditarPaciente"
+        component={EditarPacienteScreen}
+        options={{ title: "Editar Paciente" }}
       />
-      <Stack.Screen 
-        name="RegistrarSignos" 
-        component={RegistrarSignosScreen} 
-        options={{ title: "Signos Vitales" }} 
+
+      <Stack.Screen
+        name="RegistrarSignos"
+        component={RegistrarSignosScreen}
+        options={{ title: "Registrar Signos Vitales" }}
+      />
+
+      {/* ✅ ESTA RUTA YA ES CORRECTA */}
+      <Stack.Screen
+        name="CrearNota"
+        component={CrearNotaScreen}
+        options={{ title: "Crear Nota Médica" }}
       />
     </Stack.Navigator>
   );
 }
 
+// ------------------------------
+// PERFIL DEL DOCTOR
+// ------------------------------
 function PerfilStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: true }}>
-      <Stack.Screen 
-        name="MiPerfil" 
-        component={PerfilScreen} 
-        options={{ title: "Mi Perfil" }} 
+    <Stack.Navigator>
+      <Stack.Screen
+        name="PerfilDoctor"
+        component={PerfilScreen}
+        options={{ title: "Mi Perfil" }}
       />
     </Stack.Navigator>
   );
 }
 
+// ------------------------------
+// NAVEGADOR PRINCIPAL DEL DOCTOR
+// ------------------------------
 export default function DoctorNavigator() {
   const { theme } = useTheme();
-  
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: { 
+        tabBarStyle: {
           backgroundColor: theme.colors.card,
-          borderTopColor: theme.colors.border,
+          height: 60,
           paddingBottom: 5,
           paddingTop: 5,
-          height: 60,
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,
-        tabBarLabelStyle: { fontSize: 11 },
+
         tabBarIcon: ({ color }) => {
           const icons = {
-            Inicio: 'home-outline',
-            Citas: 'calendar-outline',
-            Pacientes: 'people-outline',
-            Perfil: 'person-circle-outline'
+            Inicio: "home-outline",
+            Pacientes: "people-outline",
+            Perfil: "person-circle-outline",
           };
+
           return <Ionicons name={icons[route.name]} size={22} color={color} />;
-        }
+        },
       })}
     >
-      <Tab.Screen name="Inicio" component={InicioStack} />
-      <Tab.Screen name="Citas" component={CitasStack} />
+      <Tab.Screen name="Inicio" component={DashboardStack} />
       <Tab.Screen name="Pacientes" component={PacientesStack} />
       <Tab.Screen name="Perfil" component={PerfilStack} />
     </Tab.Navigator>

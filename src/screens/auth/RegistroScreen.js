@@ -7,99 +7,131 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { GENEROS } from '../../constants/roles';
+import authAPI from '../../api/auth';
 
 const RegistroScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
+    confirmarPassword: '',
     nombre: '',
     apellido: '',
     telefono: '',
-    fecha_nacimiento: null,
+    fechaNacimiento: '',
     genero: 'Otro',
-    direccion: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   
-  const { registro } = useAuth();
   const { theme } = useTheme();
 
-  const handleInputChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
+  const handleChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setFormData({ ...formData, fecha_nacimiento: selectedDate });
-    }
-  };
-
-  const formatDate = (date) => {
-    if (!date) return '';
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const handleRegistro = async () => {
-    // Validaciones
-    if (!formData.email || !formData.password || !formData.nombre || !formData.apellido) {
-      Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
-      return;
+  const validarFormulario = () => {
+    // Validar campos obligatorios
+    if (!formData.nombre.trim() || !formData.apellido.trim()) {
+      Alert.alert('Error', 'Nombre y apellido son obligatorios');
+      return false;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
-      return;
+    // Validar que nombre y apellido solo tengan letras
+    const soloLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+    if (!soloLetras.test(formData.nombre)) {
+      Alert.alert('Error', 'El nombre solo debe contener letras');
+      return false;
     }
-
-    if (formData.password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      return;
+    if (!soloLetras.test(formData.apellido)) {
+      Alert.alert('Error', 'El apellido solo debe contener letras');
+      return false;
     }
 
     // Validar email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       Alert.alert('Error', 'Por favor ingresa un email válido');
+      return false;
+    }
+
+    // Validar contraseña
+    if (formData.password.length < 6) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      return false;
+    }
+
+    // Validar que las contraseñas coincidan
+    if (formData.password !== formData.confirmarPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return false;
+    }
+
+    // Validar teléfono (si se proporciona)
+    if (formData.telefono && formData.telefono.length < 10) {
+      Alert.alert('Error', 'El teléfono debe tener al menos 10 dígitos');
+      return false;
+    }
+
+    // Validar fecha de nacimiento (si se proporciona)
+    if (formData.fechaNacimiento) {
+      const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!fechaRegex.test(formData.fechaNacimiento)) {
+        Alert.alert('Error', 'La fecha debe tener el formato AAAA-MM-DD (ejemplo: 1990-05-15)');
+        return false;
+      }
+
+      const fecha = new Date(formData.fechaNacimiento);
+      const hoy = new Date();
+      if (fecha > hoy) {
+        Alert.alert('Error', 'La fecha de nacimiento no puede ser futura');
+        return false;
+      }
+
+      const edad = hoy.getFullYear() - fecha.getFullYear();
+      if (edad < 0 || edad > 120) {
+        Alert.alert('Error', 'Por favor ingresa una fecha de nacimiento válida');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleRegistro = async () => {
+    if (!validarFormulario()) {
       return;
     }
 
     setLoading(true);
-    
-    const datosRegistro = {
-      email: formData.email.toLowerCase().trim(),
-      password: formData.password,
-      nombre: formData.nombre.trim(),
-      apellido: formData.apellido.trim(),
-      telefono: formData.telefono.trim(),
-      fecha_nacimiento: formData.fecha_nacimiento ? formatDate(formData.fecha_nacimiento) : null,
-      genero: formData.genero,
-      direccion: formData.direccion.trim(),
-    };
 
-    const result = await registro(datosRegistro);
-    setLoading(false);
+    try {
+      // Preparar datos para el registro
+      const datosRegistro = {
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password,
+        nombre: formData.nombre.trim(),
+        apellido: formData.apellido.trim(),
+        telefono: formData.telefono.trim() || null,
+        fecha_nacimiento: formData.fechaNacimiento || null,
+        genero: formData.genero,
+      };
 
-    if (result.success) {
+      console.log('📤 Enviando registro:', datosRegistro);
+
+      const response = await authAPI.registroPaciente(datosRegistro);
+
+      console.log('✅ Registro exitoso:', response);
+
       Alert.alert(
-        'Registro exitoso',
-        result.message || 'Tu cuenta ha sido creada. Por favor verifica tu email.',
+        'Registro Exitoso',
+        'Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión.',
         [
           {
             text: 'OK',
@@ -107,8 +139,28 @@ const RegistroScreen = ({ navigation }) => {
           },
         ]
       );
-    } else {
-      Alert.alert('Error', result.error);
+    } catch (error) {
+      console.error('❌ Error en registro:', error);
+      
+      let mensaje = 'No se pudo completar el registro';
+      
+      if (error.response) {
+        // Error del servidor
+        if (error.response.status === 400) {
+          mensaje = error.response.data.detail || 'El correo ya está registrado';
+        } else if (error.response.status === 422) {
+          mensaje = 'Datos inválidos. Verifica el formato de los campos';
+        } else {
+          mensaje = error.response.data.detail || 'Error en el servidor';
+        }
+      } else if (error.request) {
+        // Error de red
+        mensaje = 'No se pudo conectar con el servidor. Verifica tu conexión.';
+      }
+
+      Alert.alert('Error de Registro', mensaje);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -117,29 +169,43 @@ const RegistroScreen = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
         <View style={styles.header}>
+          <View style={[styles.logoCircle, { backgroundColor: theme.colors.primary + '20' }]}>
+            <Ionicons name="person-add" size={48} color={theme.colors.primary} />
+          </View>
           <Text style={[styles.title, { color: theme.colors.text }]}>
-            Crear cuenta
+            Crear Cuenta
           </Text>
           <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            Regístrate como paciente
+            Completa el formulario para registrarte
           </Text>
         </View>
 
+        {/* Formulario */}
         <View style={styles.form}>
           {/* Nombre */}
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Nombre *
             </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }]}
-              placeholder="Tu nombre"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={formData.nombre}
-              onChangeText={(value) => handleInputChange('nombre', value)}
-            />
+            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+              <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="Tu nombre"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={formData.nombre}
+                onChangeText={(text) => handleChange('nombre', text)}
+                autoCapitalize="words"
+                editable={!loading}
+              />
+            </View>
           </View>
 
           {/* Apellido */}
@@ -147,13 +213,18 @@ const RegistroScreen = ({ navigation }) => {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Apellido *
             </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }]}
-              placeholder="Tu apellido"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={formData.apellido}
-              onChangeText={(value) => handleInputChange('apellido', value)}
-            />
+            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+              <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="Tu apellido"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={formData.apellido}
+                onChangeText={(text) => handleChange('apellido', text)}
+                autoCapitalize="words"
+                editable={!loading}
+              />
+            </View>
           </View>
 
           {/* Email */}
@@ -161,90 +232,20 @@ const RegistroScreen = ({ navigation }) => {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Correo electrónico *
             </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }]}
-              placeholder="correo@ejemplo.com"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={formData.email}
-              onChangeText={(value) => handleInputChange('email', value)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-
-          {/* Teléfono */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Teléfono
-            </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }]}
-              placeholder="442-123-4567"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={formData.telefono}
-              onChangeText={(value) => handleInputChange('telefono', value)}
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          {/* Fecha de nacimiento con DatePicker */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Fecha de nacimiento
-            </Text>
-            <TouchableOpacity
-              style={[styles.dateButton, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
-              <Text style={[styles.dateText, { color: formData.fecha_nacimiento ? theme.colors.text : theme.colors.textSecondary }]}>
-                {formData.fecha_nacimiento ? formatDate(formData.fecha_nacimiento) : 'Selecciona tu fecha de nacimiento'}
-              </Text>
-            </TouchableOpacity>
-
-            {showDatePicker && (
-              <DateTimePicker
-                value={formData.fecha_nacimiento || new Date(2000, 0, 1)}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleDateChange}
-                maximumDate={new Date()}
-                minimumDate={new Date(1920, 0, 1)}
+            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+              <Ionicons name="mail-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="correo@ejemplo.com"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={formData.email}
+                onChangeText={(text) => handleChange('email', text)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
               />
-            )}
-          </View>
-
-          {/* Género */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Género
-            </Text>
-            <View style={[styles.pickerContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-              <Picker
-                selectedValue={formData.genero}
-                onValueChange={(value) => handleInputChange('genero', value)}
-                style={{ color: theme.colors.text }}
-              >
-                {GENEROS.map((genero) => (
-                  <Picker.Item key={genero.value} label={genero.label} value={genero.value} />
-                ))}
-              </Picker>
             </View>
-          </View>
-
-          {/* Dirección */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Dirección
-            </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }]}
-              placeholder="Calle, número, colonia"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={formData.direccion}
-              onChangeText={(value) => handleInputChange('direccion', value)}
-            />
           </View>
 
           {/* Contraseña */}
@@ -252,52 +253,108 @@ const RegistroScreen = ({ navigation }) => {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Contraseña *
             </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }]}
-              placeholder="Mínimo 6 caracteres"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={formData.password}
-              onChangeText={(value) => handleInputChange('password', value)}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="Mínimo 6 caracteres"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={formData.password}
+                onChangeText={(text) => handleChange('password', text)}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                editable={!loading}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon} disabled={loading}>
+                <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Confirmar contraseña */}
+          {/* Confirmar Contraseña */}
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Confirmar contraseña *
             </Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }]}
-              placeholder="Repite tu contraseña"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={formData.confirmPassword}
-              onChangeText={(value) => handleInputChange('confirmPassword', value)}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+              <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="Confirma tu contraseña"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={formData.confirmarPassword}
+                onChangeText={(text) => handleChange('confirmarPassword', text)}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                editable={!loading}
+              />
+              <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon} disabled={loading}>
+                <Ionicons name={showConfirmPassword ? "eye-outline" : "eye-off-outline"} size={20} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
           </View>
 
+          {/* Teléfono */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Teléfono
+            </Text>
+            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+              <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="442-123-4567"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={formData.telefono}
+                onChangeText={(text) => handleChange('telefono', text)}
+                keyboardType="phone-pad"
+                editable={!loading}
+              />
+            </View>
+          </View>
+
+          {/* Fecha de Nacimiento */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Fecha de nacimiento
+            </Text>
+            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="AAAA-MM-DD (ej: 1990-05-15)"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={formData.fechaNacimiento}
+                onChangeText={(text) => handleChange('fechaNacimiento', text)}
+                editable={!loading}
+              />
+            </View>
+          </View>
+
+          {/* Botón de registro */}
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.colors.primary }]}
+            style={[styles.button, { backgroundColor: theme.colors.primary }, loading && styles.buttonDisabled]}
             onPress={handleRegistro}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Registrarse</Text>
+              <>
+                <Ionicons name="person-add-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.buttonText}>Crear Cuenta</Text>
+              </>
             )}
           </TouchableOpacity>
 
+          {/* Link a login */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>
               ¿Ya tienes cuenta?{' '}
             </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} disabled={loading}>
               <Text style={[styles.linkText, { color: theme.colors.primary }]}>
-                Inicia sesión
+                Inicia sesión aquí
               </Text>
             </TouchableOpacity>
           </View>
@@ -314,11 +371,19 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     padding: 20,
-    paddingTop: 60,
   },
   header: {
+    marginTop: 20,
     marginBottom: 30,
     alignItems: 'center',
+  },
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   title: {
     fontSize: 28,
@@ -326,7 +391,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
+    textAlign: 'center',
   },
   form: {
     width: '100%',
@@ -337,38 +403,38 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontSize: 16,
-  },
-  dateButton: {
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  dateText: {
-    fontSize: 16,
-  },
-  pickerContainer: {
+    height: 50,
     borderWidth: 1,
     borderRadius: 10,
-    overflow: 'hidden',
+    paddingHorizontal: 15,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    height: '100%',
+  },
+  eyeIcon: {
+    padding: 5,
   },
   button: {
+    flexDirection: 'row',
     height: 50,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
+    gap: 10,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: '#FFFFFF',
@@ -379,7 +445,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 20,
-    marginBottom: 40,
+    marginBottom: 30,
   },
   footerText: {
     fontSize: 14,

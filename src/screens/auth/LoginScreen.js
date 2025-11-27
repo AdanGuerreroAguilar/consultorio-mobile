@@ -11,159 +11,184 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authAPI } from '../../api/auth';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  
-  const { login } = useAuth();
-  const { theme } = useTheme();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+    // Validaciones básicas
+    if (!email.trim()) {
+      Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
+      return;
+    }
+
+    if (!password.trim()) {
+      Alert.alert('Error', 'Por favor ingresa tu contraseña');
+      return;
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Por favor ingresa un correo electrónico válido');
       return;
     }
 
     setLoading(true);
-    const result = await login(email.toLowerCase().trim(), password);
-    setLoading(false);
 
-    if (!result.success) {
-      Alert.alert('Error', result.error);
+    try {
+      console.log('🔐 Intentando login con:', email);
+      
+      // Llamar al API de login
+      const response = await authAPI.login(email, password);
+      
+      console.log('✅ Login exitoso:', response);
+
+      // Guardar token y usuario en AsyncStorage
+      await AsyncStorage.setItem('token', response.access_token);
+      await AsyncStorage.setItem('usuario', JSON.stringify(response.usuario));
+
+      console.log('👤 Usuario autenticado:', {
+        nombre: response.usuario.nombre,
+        rol: response.usuario.rol,
+        paciente_id: response.usuario.paciente_id
+      });
+
+      // Navegar según el rol del usuario usando los nombres CORRECTOS
+      switch (response.usuario.rol) {
+        case 'admin':
+          navigation.replace('AdminApp'); // ✅ CORREGIDO
+          break;
+        case 'doctor':
+          navigation.replace('DoctorApp'); // ✅ CORREGIDO
+          break;
+        case 'paciente':
+          navigation.replace('PacienteApp'); // ✅ CORREGIDO
+          break;
+        default:
+          Alert.alert('Error', 'Rol de usuario no reconocido');
+      }
+
+    } catch (error) {
+      console.error('❌ Error en login:', error);
+      
+      if (error.response) {
+        // Error de respuesta del servidor
+        const mensaje = error.response.data?.detail || 'Credenciales incorrectas';
+        Alert.alert('Error de autenticación', mensaje);
+      } else if (error.request) {
+        // No se recibió respuesta del servidor
+        Alert.alert(
+          'Error de conexión',
+          'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
+        );
+      } else {
+        // Error en la configuración de la petición
+        Alert.alert('Error', 'Ocurrió un error inesperado. Por favor intenta de nuevo.');
+      }
+    } finally {
+      setLoading(false);
     }
-    // Si es exitoso, el AuthContext redirige automáticamente
+  };
+
+  // Función para login rápido (testing)
+  const quickLogin = async (email, password) => {
+    setEmail(email);
+    setPassword(password);
+    
+    // Simular delay para que se vea el cambio
+    setTimeout(() => {
+      handleLogin();
+    }, 100);
   };
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>
-            Consultorio Médico
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            Inicia sesión para continuar
-          </Text>
-        </View>
+        <View style={styles.content}>
+          <Text style={styles.title}>Consultorio Médico</Text>
+          <Text style={styles.subtitle}>Iniciar Sesión</Text>
 
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Correo electrónico
-            </Text>
+          <View style={styles.form}>
             <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.colors.card,
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              placeholder="correo@ejemplo.com"
-              placeholderTextColor={theme.colors.textSecondary}
+              style={styles.input}
+              placeholder="Correo electrónico"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              editable={!loading}
             />
-          </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Contraseña
-            </Text>
             <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: theme.colors.card,
-                  color: theme.colors.text,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-              placeholder="Tu contraseña"
-              placeholderTextColor={theme.colors.textSecondary}
+              style={styles.input}
+              placeholder="Contraseña"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               autoCapitalize="none"
+              editable={!loading}
             />
-          </View>
 
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: theme.colors.primary }]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>Iniciar sesión</Text>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Iniciar Sesión</Text>
+              )}
+            </TouchableOpacity>
 
-          <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>
-              ¿No tienes cuenta?{' '}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Registro')}>
-              <Text style={[styles.linkText, { color: theme.colors.primary }]}>
-                Regístrate aquí
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => navigation.navigate('Registro')}
+              disabled={loading}
+            >
+              <Text style={styles.linkText}>
+                ¿No tienes cuenta? Regístrate aquí
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Botones de prueba rápida para desarrollo */}
-        <View style={styles.devButtons}>
-          <Text style={[styles.devTitle, { color: theme.colors.textSecondary }]}>
-            Pruebas rápidas:
-          </Text>
-          
-          <TouchableOpacity
-            style={[styles.devButton, { backgroundColor: theme.colors.danger + '20' }]}
-            onPress={() => {
-              setEmail('admin@consultorio.com');
-              setPassword('Admin2025!');
-            }}
-          >
-            <Text style={[styles.devButtonText, { color: theme.colors.danger }]}>
-              👤 Admin
-            </Text>
-          </TouchableOpacity>
+          {/* Botones de prueba rápida */}
+          <View style={styles.testButtonsContainer}>
+            <Text style={styles.testTitle}>Prueba rápida:</Text>
+            
+            <TouchableOpacity
+              style={[styles.testButton, styles.adminButton]}
+              onPress={() => quickLogin('admin@consultorio.com', 'Admin2025!')}
+              disabled={loading}
+            >
+              <Text style={styles.testButtonText}>👨‍💼 Admin</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.devButton, { backgroundColor: theme.colors.primary + '20' }]}
-            onPress={() => {
-              setEmail('maria.lopez@consultorio.com');
-              setPassword('Pediatria2025');
-            }}
-          >
-            <Text style={[styles.devButtonText, { color: theme.colors.primary }]}>
-              👨‍⚕️ Doctor
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.testButton, styles.doctorButton]}
+              onPress={() => quickLogin('maria.lopez@consultorio.com', 'Pediatria2025')}
+              disabled={loading}
+            >
+              <Text style={styles.testButtonText}>👨‍⚕️ Doctor</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.devButton, { backgroundColor: theme.colors.success + '20' }]}
-            onPress={() => {
-              setEmail('paciente@test.com');
-              setPassword('paciente123');
-            }}
-          >
-            <Text style={[styles.devButtonText, { color: theme.colors.success }]}>
-              🙋 Paciente
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.testButton, styles.pacienteButton]}
+              onPress={() => quickLogin('paciente@test.com', 'paciente123')}
+              disabled={loading}
+            >
+              <Text style={styles.testButtonText}>👤 Paciente</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -173,85 +198,105 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
   },
   scrollContainer: {
     flexGrow: 1,
+  },
+  content: {
+    flex: 1,
     justifyContent: 'center',
     padding: 20,
-  },
-  header: {
-    marginBottom: 40,
-    alignItems: 'center',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 8,
+    color: '#2196F3',
+    textAlign: 'center',
+    marginBottom: 10,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 24,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 40,
   },
   form: {
-    width: '100%',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   input: {
-    height: 50,
+    backgroundColor: '#f9f9f9',
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 15,
     fontSize: 16,
   },
   button: {
-    height: 50,
-    borderRadius: 10,
-    justifyContent: 'center',
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+    padding: 15,
     alignItems: 'center',
     marginTop: 10,
   },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
+  },
   buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  linkButton: {
     marginTop: 20,
-  },
-  footerText: {
-    fontSize: 14,
+    alignItems: 'center',
   },
   linkText: {
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#2196F3',
+    fontSize: 16,
   },
-  devButtons: {
+  testButtonsContainer: {
     marginTop: 30,
-    alignItems: 'center',
-    gap: 10,
+    padding: 15,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#FF9800',
   },
-  devTitle: {
-    fontSize: 12,
-    marginBottom: 5,
+  testTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF9800',
+    marginBottom: 15,
+    textAlign: 'center',
   },
-  devButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+  testButton: {
+    padding: 12,
     borderRadius: 8,
-    width: '80%',
+    marginBottom: 10,
     alignItems: 'center',
   },
-  devButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+  adminButton: {
+    backgroundColor: '#9C27B0',
+  },
+  doctorButton: {
+    backgroundColor: '#4CAF50',
+  },
+  pacienteButton: {
+    backgroundColor: '#2196F3',
+  },
+  testButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

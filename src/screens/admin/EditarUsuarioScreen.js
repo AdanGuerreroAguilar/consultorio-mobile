@@ -1,31 +1,33 @@
-// screens/admin/CrearUsuarioScreen.js
+// screens/admin/EditarUsuarioScreen.js
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
+  ScrollView,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
   Alert,
-  ScrollView,
   ActivityIndicator,
-} from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../context/ThemeContext';
-import apiClient from '../../api/client';
+} from "react-native";
+import { Picker } from "@react-native-picker/picker";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../context/ThemeContext";
+import apiClient from "../../api/client";
 
 const roles = ["admin", "doctor", "paciente"];
 
-const CrearUsuarioScreen = ({ navigation }) => {
+const EditarUsuarioScreen = ({ route, navigation }) => {
   const { theme } = useTheme();
+  const { usuario } = route.params;
 
-  const [nombre, setNombre] = useState('');
-  const [apellido, setApellido] = useState('');
-  const [email, setEmail] = useState('');
-  const [rol, setRol] = useState('');
-  const [password, setPassword] = useState('');
+  const [nombre, setNombre] = useState(usuario.nombre);
+  const [apellido, setApellido] = useState(usuario.apellido);
+  const [email, setEmail] = useState(usuario.email);
+  const [rol, setRol] = useState(usuario.rol);
+  const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   // ============================================================
@@ -40,35 +42,34 @@ const CrearUsuarioScreen = ({ navigation }) => {
 
     if (!rol) return "Selecciona un rol";
 
-    if (!password.trim()) return "La contraseña es obligatoria";
-    if (password.length < 6)
-      return "La contraseña debe tener al menos 6 caracteres";
+    if (password.length > 0 && password.length < 6) {
+      return "La nueva contraseña debe tener al menos 6 caracteres";
+    }
 
     return null;
   };
 
   // ============================================================
-  // CREAR USUARIO
+  // GUARDAR CAMBIOS (con confirmación)
   // ============================================================
-  const handleCrear = () => {
+  const handleGuardar = () => {
     const error = validar();
     if (error) return Alert.alert("Error", error);
 
-    // Confirmación de seguridad
     Alert.alert(
       "Confirmación",
-      "¿Registrar este usuario?",
+      "¿Guardar cambios del usuario?",
       [
         { text: "Cancelar", style: "cancel" },
         {
-          text: "Confirmar",
-          onPress: () => crearUsuario(),
+          text: "Guardar",
+          onPress: () => actualizarUsuario(),
         },
       ]
     );
   };
 
-  const crearUsuario = async () => {
+  const actualizarUsuario = async () => {
     setLoading(true);
     try {
       const datos = {
@@ -76,20 +77,23 @@ const CrearUsuarioScreen = ({ navigation }) => {
         apellido: apellido.trim(),
         email: email.toLowerCase().trim(),
         rol,
-        password: password.trim(),
       };
 
-      await apiClient.post('/usuarios', datos);
+      // Agregar contraseña solo si se cambió
+      if (password.trim()) {
+        datos.password = password.trim();
+      }
 
-      Alert.alert("Éxito", "Usuario creado correctamente", [
-        { text: "OK", onPress: () => navigation.goBack() }
+      await apiClient.put(`/usuarios/${usuario.id}`, datos);
+
+      Alert.alert("Éxito", "Cambios guardados", [
+        { text: "OK", onPress: () => navigation.goBack() },
       ]);
-
     } catch (error) {
-      console.log("Error creando usuario:", error);
+      console.error("Error actualizando usuario:", error);
       Alert.alert(
         "Error",
-        error.response?.data?.detail || "No se pudo crear el usuario"
+        error.response?.data?.detail || "No se pudieron guardar los cambios"
       );
     } finally {
       setLoading(false);
@@ -101,20 +105,25 @@ const CrearUsuarioScreen = ({ navigation }) => {
   // ============================================================
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[
+        styles.container,
+        { backgroundColor: theme.colors.background },
+      ]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.content}>
-
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Datos del Usuario
+          Editar Usuario
         </Text>
 
         {/* Nombre */}
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Nombre *</Text>
           <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              { backgroundColor: theme.colors.card, color: theme.colors.text },
+            ]}
             value={nombre}
             onChangeText={setNombre}
             placeholder="Nombre"
@@ -126,7 +135,10 @@ const CrearUsuarioScreen = ({ navigation }) => {
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Apellido *</Text>
           <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              { backgroundColor: theme.colors.card, color: theme.colors.text },
+            ]}
             value={apellido}
             onChangeText={setApellido}
             placeholder="Apellido"
@@ -138,7 +150,10 @@ const CrearUsuarioScreen = ({ navigation }) => {
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Email *</Text>
           <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              { backgroundColor: theme.colors.card, color: theme.colors.text },
+            ]}
             value={email}
             onChangeText={setEmail}
             placeholder="correo@ejemplo.com"
@@ -151,7 +166,12 @@ const CrearUsuarioScreen = ({ navigation }) => {
         {/* Rol */}
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Rol *</Text>
-          <View style={[styles.pickerContainer, { backgroundColor: theme.colors.card }]}>
+          <View
+            style={[
+              styles.pickerContainer,
+              { backgroundColor: theme.colors.card },
+            ]}
+          >
             <Picker
               selectedValue={rol}
               onValueChange={(value) => setRol(value)}
@@ -167,33 +187,38 @@ const CrearUsuarioScreen = ({ navigation }) => {
 
         {/* Contraseña */}
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Contraseña *</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>
+            Nueva Contraseña (opcional)
+          </Text>
           <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              { backgroundColor: theme.colors.card, color: theme.colors.text },
+            ]}
             value={password}
             onChangeText={setPassword}
-            placeholder="Contraseña"
+            placeholder="Dejar en blanco para no cambiar"
             placeholderTextColor={theme.colors.textSecondary}
             secureTextEntry
           />
         </View>
 
-        {/* Botón Crear */}
+        {/* Botón Guardar */}
         <TouchableOpacity
           style={[
-            styles.crearButton,
+            styles.saveButton,
             { backgroundColor: theme.colors.primary },
             loading && styles.buttonDisabled,
           ]}
-          onPress={handleCrear}
+          onPress={handleGuardar}
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color="#FFF" />
           ) : (
             <>
-              <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
-              <Text style={styles.crearButtonText}>Crear Usuario</Text>
+              <Ionicons name="save-outline" size={22} color="#FFF" />
+              <Text style={styles.saveButtonText}>Guardar Cambios</Text>
             </>
           )}
         </TouchableOpacity>
@@ -202,7 +227,7 @@ const CrearUsuarioScreen = ({ navigation }) => {
   );
 };
 
-export default CrearUsuarioScreen;
+export default EditarUsuarioScreen;
 
 // ============================================================
 // ESTILOS
@@ -213,7 +238,7 @@ const styles = StyleSheet.create({
 
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 15,
   },
 
@@ -222,7 +247,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     marginBottom: 6,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 
   input: {
@@ -235,20 +260,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 
-  crearButton: {
-    flexDirection: 'row',
+  saveButton: {
+    flexDirection: "row",
     padding: 16,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 20,
     gap: 10,
   },
 
-  crearButtonText: {
+  saveButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
   },
 
   buttonDisabled: { opacity: 0.6 },

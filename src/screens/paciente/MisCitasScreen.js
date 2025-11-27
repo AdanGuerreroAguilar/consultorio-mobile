@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -18,8 +19,8 @@ const MisCitasScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [citas, setCitas] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [filtro, setFiltro] = useState('todas'); // todas, proximas, pasadas
+  const [loading, setLoading] = useState(true);
+  const [filtro, setFiltro] = useState('todas');
 
   useFocusEffect(
     useCallback(() => {
@@ -30,35 +31,60 @@ const MisCitasScreen = ({ navigation }) => {
   const cargarCitas = async () => {
     setLoading(true);
     try {
+      // Debug: verificar que tenemos paciente_id
+      console.log('👤 Usuario actual:', user);
+      console.log('🆔 Paciente ID:', user?.paciente_id);
+
+      if (!user?.paciente_id) {
+        console.warn('⚠️ No se encontró paciente_id en el usuario');
+        Alert.alert(
+          'Advertencia', 
+          'No se pudo identificar tu perfil de paciente. Por favor, cierra sesión e inicia de nuevo.'
+        );
+        setCitas([]);
+        return;
+      }
+
       const response = await citasAPI.getCitas();
+      console.log('📋 Respuesta de citas:', response);
+
+      // Verificar que response sea un array
+      const todasLasCitas = Array.isArray(response) ? response : response?.data || [];
+
       // Filtrar solo mis citas
-      const misCitas = response.filter(
+      const misCitas = todasLasCitas.filter(
         cita => cita.paciente_id === user.paciente_id
       );
-      
-      // Aplicar filtro
+
+      console.log('📌 Mis citas encontradas:', misCitas.length);
+
+      // Aplicar filtro de tiempo
       const ahora = new Date();
       let citasFiltradas = misCitas;
-      
+
       if (filtro === 'proximas') {
         citasFiltradas = misCitas.filter(
-          cita => new Date(cita.fecha_hora) >= ahora
+          cita => new Date(cita.fecha_hora) >= ahora && cita.estado !== 'cancelada'
         );
       } else if (filtro === 'pasadas') {
         citasFiltradas = misCitas.filter(
           cita => new Date(cita.fecha_hora) < ahora
         );
       }
-      
-      // Ordenar por fecha
-      citasFiltradas.sort((a, b) => 
-        new Date(b.fecha_hora) - new Date(a.fecha_hora)
-      );
-      
+
+      // Ordenar por fecha (más recientes primero para pasadas, más próximas primero para futuras)
+      citasFiltradas.sort((a, b) => {
+        if (filtro === 'proximas') {
+          return new Date(a.fecha_hora) - new Date(b.fecha_hora);
+        }
+        return new Date(b.fecha_hora) - new Date(a.fecha_hora);
+      });
+
       setCitas(citasFiltradas);
     } catch (error) {
-      console.error('Error al cargar citas:', error);
-      Alert.alert('Error', 'No se pudieron cargar las citas');
+      console.error('❌ Error al cargar citas:', error);
+      console.error('Detalles del error:', error.response?.data || error.message);
+      Alert.alert('Error', 'No se pudieron cargar las citas. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -79,6 +105,7 @@ const MisCitasScreen = ({ navigation }) => {
               Alert.alert('Éxito', 'Cita cancelada correctamente');
               cargarCitas();
             } catch (error) {
+              console.error('Error al cancelar:', error);
               Alert.alert('Error', 'No se pudo cancelar la cita');
             }
           },
@@ -88,30 +115,36 @@ const MisCitasScreen = ({ navigation }) => {
   };
 
   const formatearFecha = (fechaStr) => {
-    const fecha = new Date(fechaStr);
-    const opciones = { 
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    };
-    return fecha.toLocaleDateString('es-MX', opciones);
+    try {
+      const fecha = new Date(fechaStr);
+      const opciones = {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      };
+      return fecha.toLocaleDateString('es-MX', opciones);
+    } catch (error) {
+      return fechaStr;
+    }
   };
 
   const getEstadoColor = (estado) => {
     const colores = {
-      pendiente: theme.colors.warning,
-      confirmada: theme.colors.success,
-      completada: theme.colors.textSecondary,
-      cancelada: theme.colors.danger,
+      pendiente: theme.colors.warning || '#FFC107',
+      programada: theme.colors.primary || '#2196F3',
+      confirmada: theme.colors.success || '#4CAF50',
+      completada: theme.colors.textSecondary || '#9E9E9E',
+      cancelada: theme.colors.danger || '#F44336',
     };
     return colores[estado] || theme.colors.textSecondary;
   };
 
   const renderCita = ({ item }) => {
     const esFutura = new Date(item.fecha_hora) >= new Date();
-    
+    const estadoColor = getEstadoColor(item.estado);
+
     return (
       <TouchableOpacity
         style={[styles.citaCard, { backgroundColor: theme.colors.card }]}
@@ -120,28 +153,25 @@ const MisCitasScreen = ({ navigation }) => {
         <View style={styles.citaHeader}>
           <View style={[
             styles.estadoBadge,
-            { backgroundColor: getEstadoColor(item.estado) + '20' }
+            { backgroundColor: estadoColor + '20' }
           ]}>
-            <Text style={[
-              styles.estadoText,
-              { color: getEstadoColor(item.estado) }
-            ]}>
+            <Text style={[styles.estadoText, { color: estadoColor }]}>
               {item.estado}
             </Text>
           </View>
-          
-          {esFutura && (
+
+          {esFutura && item.estado !== 'cancelada' && (
             <TouchableOpacity
               onPress={() => handleCancelarCita(item.id)}
               style={styles.cancelButton}
             >
-              <Ionicons name="close-circle" size={24} color={theme.colors.danger} />
+              <Ionicons name="close-circle" size={24} color={theme.colors.danger || '#F44336'} />
             </TouchableOpacity>
           )}
         </View>
 
         <Text style={[styles.citaMotivo, { color: theme.colors.text }]}>
-          {item.motivo}
+          {item.motivo || 'Sin motivo especificado'}
         </Text>
 
         <View style={styles.citaInfo}>
@@ -151,97 +181,98 @@ const MisCitasScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        <View style={styles.citaInfo}>
-          <Ionicons name="person-outline" size={18} color={theme.colors.textSecondary} />
-          <Text style={[styles.citaInfoText, { color: theme.colors.textSecondary }]}>
-            Dr. {item.doctor_nombre}
-          </Text>
-        </View>
+        {(item.doctor_nombre || item.doctor) && (
+          <View style={styles.citaInfo}>
+            <Ionicons name="person-outline" size={18} color={theme.colors.textSecondary} />
+            <Text style={[styles.citaInfoText, { color: theme.colors.textSecondary }]}>
+              Dr. {item.doctor_nombre || item.doctor?.nombre || 'No asignado'}
+            </Text>
+          </View>
+        )}
 
-        <View style={styles.citaInfo}>
-          <Ionicons name="time-outline" size={18} color={theme.colors.textSecondary} />
-          <Text style={[styles.citaInfoText, { color: theme.colors.textSecondary }]}>
-            {item.duracion_minutos} minutos
-          </Text>
-        </View>
+        {item.duracion_minutos && (
+          <View style={styles.citaInfo}>
+            <Ionicons name="time-outline" size={18} color={theme.colors.textSecondary} />
+            <Text style={[styles.citaInfoText, { color: theme.colors.textSecondary }]}>
+              {item.duracion_minutos} minutos
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
     );
   };
+
+  // Mostrar loading inicial
+  if (loading && citas.length === 0) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Cargando citas...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Filtros */}
       <View style={styles.filtros}>
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            filtro === 'todas' && { backgroundColor: theme.colors.primary },
-            { borderColor: theme.colors.primary }
-          ]}
-          onPress={() => setFiltro('todas')}
-        >
-          <Text style={[
-            styles.filtroText,
-            filtro === 'todas' 
-              ? { color: '#FFFFFF' } 
-              : { color: theme.colors.primary }
-          ]}>
-            Todas
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            filtro === 'proximas' && { backgroundColor: theme.colors.primary },
-            { borderColor: theme.colors.primary }
-          ]}
-          onPress={() => setFiltro('proximas')}
-        >
-          <Text style={[
-            styles.filtroText,
-            filtro === 'proximas'
-              ? { color: '#FFFFFF' }
-              : { color: theme.colors.primary }
-          ]}>
-            Próximas
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.filtroButton,
-            filtro === 'pasadas' && { backgroundColor: theme.colors.primary },
-            { borderColor: theme.colors.primary }
-          ]}
-          onPress={() => setFiltro('pasadas')}
-        >
-          <Text style={[
-            styles.filtroText,
-            filtro === 'pasadas'
-              ? { color: '#FFFFFF' }
-              : { color: theme.colors.primary }
-          ]}>
-            Pasadas
-          </Text>
-        </TouchableOpacity>
+        {['todas', 'proximas', 'pasadas'].map((tipo) => (
+          <TouchableOpacity
+            key={tipo}
+            style={[
+              styles.filtroButton,
+              filtro === tipo && { backgroundColor: theme.colors.primary },
+              { borderColor: theme.colors.primary }
+            ]}
+            onPress={() => setFiltro(tipo)}
+          >
+            <Text style={[
+              styles.filtroText,
+              filtro === tipo
+                ? { color: '#FFFFFF' }
+                : { color: theme.colors.primary }
+            ]}>
+              {tipo === 'todas' ? 'Todas' : tipo === 'proximas' ? 'Próximas' : 'Pasadas'}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Lista de citas */}
       <FlatList
         data={citas}
         renderItem={renderCita}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
         contentContainerStyle={styles.lista}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={cargarCitas} />
+          <RefreshControl 
+            refreshing={loading} 
+            onRefresh={cargarCitas}
+            colors={[theme.colors.primary]}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="calendar-outline" size={64} color={theme.colors.textSecondary} />
+            <Ionicons 
+              name="calendar-outline" 
+              size={64} 
+              color={theme.colors.textSecondary} 
+            />
             <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-              No tienes citas {filtro === 'todas' ? '' : filtro}
+              {filtro === 'todas' 
+                ? 'No tienes citas registradas' 
+                : filtro === 'proximas'
+                  ? 'No tienes citas próximas'
+                  : 'No tienes citas pasadas'}
             </Text>
+            <TouchableOpacity
+              style={[styles.nuevaCitaBtn, { backgroundColor: theme.colors.primary }]}
+              onPress={() => navigation.navigate('CrearCita')}
+            >
+              <Text style={styles.nuevaCitaBtnText}>Agendar una cita</Text>
+            </TouchableOpacity>
           </View>
         }
       />
@@ -261,6 +292,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
   filtros: {
     flexDirection: 'row',
     padding: 15,
@@ -279,6 +319,7 @@ const styles = StyleSheet.create({
   },
   lista: {
     padding: 15,
+    paddingBottom: 80,
   },
   citaCard: {
     padding: 15,
@@ -331,6 +372,18 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     marginTop: 15,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  nuevaCitaBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  nuevaCitaBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   fab: {
     position: 'absolute',

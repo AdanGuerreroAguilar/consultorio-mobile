@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { pacientesAPI } from '../../api/pacientes';
@@ -17,20 +19,59 @@ const MiPerfilScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
   const { theme } = useTheme();
   const [paciente, setPaciente] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    cargarPerfil();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      cargarPerfil();
+    }, [])
+  );
 
   const cargarPerfil = async () => {
     setLoading(true);
+    setError(null);
+
     try {
+      // Debug: verificar que tenemos paciente_id
+      console.log('👤 Usuario en MiPerfil:', user);
+      console.log('🆔 Paciente ID:', user?.paciente_id);
+
+      if (!user?.paciente_id) {
+        // Si no hay paciente_id, usar datos del usuario directamente
+        console.warn('⚠️ No se encontró paciente_id, usando datos del usuario');
+        setPaciente({
+          nombre: user?.nombre || 'Usuario',
+          apellido: user?.apellido || '',
+          email: user?.email || '',
+          telefono: user?.telefono || '',
+          fecha_nacimiento: user?.fecha_nacimiento || null,
+          genero: user?.genero || null,
+          direccion: user?.direccion || '',
+          tipo_sangre: user?.tipo_sangre || '',
+          alergias: user?.alergias || '',
+          contacto_emergencia: user?.contacto_emergencia || '',
+          telefono_emergencia: user?.telefono_emergencia || '',
+        });
+        return;
+      }
+
       const data = await pacientesAPI.getPaciente(user.paciente_id);
+      console.log('✅ Datos del paciente cargados:', data);
       setPaciente(data);
     } catch (error) {
-      console.error('Error al cargar perfil:', error);
-      Alert.alert('Error', 'No se pudo cargar el perfil');
+      console.error('❌ Error al cargar perfil:', error);
+      console.error('Detalles:', error.response?.data || error.message);
+      
+      setError('No se pudo cargar el perfil');
+      
+      // Usar datos básicos del usuario como fallback
+      setPaciente({
+        nombre: user?.nombre || 'Usuario',
+        apellido: user?.apellido || '',
+        email: user?.email || '',
+        telefono: user?.telefono || '',
+      });
     } finally {
       setLoading(false);
     }
@@ -45,7 +86,16 @@ const MiPerfilScreen = ({ navigation }) => {
         {
           text: 'Cerrar Sesión',
           style: 'destructive',
-          onPress: logout,
+          onPress: async () => {
+            try {
+              await logout();
+              // La navegación se manejará automáticamente por el AuthContext
+              // cuando isAuthenticated cambie a false
+            } catch (error) {
+              console.error('Error al cerrar sesión:', error);
+              Alert.alert('Error', 'No se pudo cerrar la sesión');
+            }
+          },
         },
       ]
     );
@@ -53,42 +103,80 @@ const MiPerfilScreen = ({ navigation }) => {
 
   const calcularEdad = (fechaNacimiento) => {
     if (!fechaNacimiento) return null;
-    const hoy = new Date();
-    const nacimiento = new Date(fechaNacimiento);
-    let edad = hoy.getFullYear() - nacimiento.getFullYear();
-    const mes = hoy.getMonth() - nacimiento.getMonth();
-    if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
-      edad--;
+    try {
+      const hoy = new Date();
+      const nacimiento = new Date(fechaNacimiento);
+      let edad = hoy.getFullYear() - nacimiento.getFullYear();
+      const mes = hoy.getMonth() - nacimiento.getMonth();
+      if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+        edad--;
+      }
+      return edad;
+    } catch {
+      return null;
     }
-    return edad;
   };
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'No especificada';
-    return new Date(fecha).toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    try {
+      return new Date(fecha).toLocaleDateString('es-MX', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return fecha;
+    }
   };
 
-  if (!paciente) {
+  const getGeneroTexto = (genero) => {
+    if (!genero) return 'No especificado';
+    const generos = {
+      'M': 'Masculino',
+      'F': 'Femenino',
+      'masculino': 'Masculino',
+      'femenino': 'Femenino',
+      'Otro': 'Otro',
+    };
+    return generos[genero] || genero;
+  };
+
+  // Loading state
+  if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <Text style={{ color: theme.colors.text }}>Cargando...</Text>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Cargando perfil...
+        </Text>
       </View>
     );
   }
 
-  const edad = calcularEdad(paciente.fecha_nacimiento);
+  const edad = paciente ? calcularEdad(paciente.fecha_nacimiento) : null;
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={cargarPerfil} />
+        <RefreshControl 
+          refreshing={loading} 
+          onRefresh={cargarPerfil}
+          colors={[theme.colors.primary]}
+        />
       }
     >
+      {/* Error banner */}
+      {error && (
+        <View style={[styles.errorBanner, { backgroundColor: theme.colors.danger + '20' }]}>
+          <Ionicons name="alert-circle" size={20} color={theme.colors.danger} />
+          <Text style={[styles.errorText, { color: theme.colors.danger }]}>
+            {error}
+          </Text>
+        </View>
+      )}
+
       {/* Header con avatar */}
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.avatarContainer}>
@@ -97,7 +185,7 @@ const MiPerfilScreen = ({ navigation }) => {
           </View>
         </View>
         <Text style={styles.nombre}>
-          {paciente.nombre} {paciente.apellido}
+          {paciente?.nombre || 'Usuario'} {paciente?.apellido || ''}
         </Text>
         {edad && (
           <Text style={styles.edad}>
@@ -120,7 +208,7 @@ const MiPerfilScreen = ({ navigation }) => {
                 Correo electrónico
               </Text>
               <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                {paciente.email || 'No especificado'}
+                {paciente?.email || user?.email || 'No especificado'}
               </Text>
             </View>
           </View>
@@ -134,7 +222,7 @@ const MiPerfilScreen = ({ navigation }) => {
                 Teléfono
               </Text>
               <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                {paciente.telefono || 'No especificado'}
+                {paciente?.telefono || 'No especificado'}
               </Text>
             </View>
           </View>
@@ -148,7 +236,7 @@ const MiPerfilScreen = ({ navigation }) => {
                 Fecha de nacimiento
               </Text>
               <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                {formatearFecha(paciente.fecha_nacimiento)}
+                {formatearFecha(paciente?.fecha_nacimiento)}
               </Text>
             </View>
           </View>
@@ -162,7 +250,7 @@ const MiPerfilScreen = ({ navigation }) => {
                 Género
               </Text>
               <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                {paciente.genero === 'M' ? 'Masculino' : paciente.genero === 'F' ? 'Femenino' : 'Otro'}
+                {getGeneroTexto(paciente?.genero)}
               </Text>
             </View>
           </View>
@@ -176,7 +264,7 @@ const MiPerfilScreen = ({ navigation }) => {
                 Dirección
               </Text>
               <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                {paciente.direccion || 'No especificada'}
+                {paciente?.direccion || 'No especificada'}
               </Text>
             </View>
           </View>
@@ -191,13 +279,13 @@ const MiPerfilScreen = ({ navigation }) => {
 
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
           <View style={styles.infoRow}>
-            <Ionicons name="water-outline" size={24} color={theme.colors.danger} />
+            <Ionicons name="water-outline" size={24} color={theme.colors.danger || '#F44336'} />
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
                 Tipo de sangre
               </Text>
               <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                {paciente.tipo_sangre || 'No especificado'}
+                {paciente?.tipo_sangre || 'No especificado'}
               </Text>
             </View>
           </View>
@@ -205,13 +293,13 @@ const MiPerfilScreen = ({ navigation }) => {
           <View style={styles.divider} />
 
           <View style={styles.infoRow}>
-            <Ionicons name="alert-circle-outline" size={24} color={theme.colors.warning} />
+            <Ionicons name="alert-circle-outline" size={24} color={theme.colors.warning || '#FFC107'} />
             <View style={styles.infoContent}>
               <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
                 Alergias
               </Text>
               <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                {paciente.alergias || 'Ninguna registrada'}
+                {paciente?.alergias || 'Ninguna registrada'}
               </Text>
             </View>
           </View>
@@ -219,7 +307,7 @@ const MiPerfilScreen = ({ navigation }) => {
       </View>
 
       {/* Contacto de emergencia */}
-      {(paciente.contacto_emergencia || paciente.telefono_emergencia) && (
+      {(paciente?.contacto_emergencia || paciente?.telefono_emergencia) && (
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
             Contacto de Emergencia
@@ -227,22 +315,22 @@ const MiPerfilScreen = ({ navigation }) => {
 
           <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
             <View style={styles.infoRow}>
-              <Ionicons name="person-outline" size={24} color={theme.colors.danger} />
+              <Ionicons name="person-outline" size={24} color={theme.colors.danger || '#F44336'} />
               <View style={styles.infoContent}>
                 <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
                   Nombre
                 </Text>
                 <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                  {paciente.contacto_emergencia || 'No especificado'}
+                  {paciente?.contacto_emergencia || 'No especificado'}
                 </Text>
               </View>
             </View>
 
-            {paciente.telefono_emergencia && (
+            {paciente?.telefono_emergencia && (
               <>
                 <View style={styles.divider} />
                 <View style={styles.infoRow}>
-                  <Ionicons name="call-outline" size={24} color={theme.colors.danger} />
+                  <Ionicons name="call-outline" size={24} color={theme.colors.danger || '#F44336'} />
                   <View style={styles.infoContent}>
                     <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
                       Teléfono
@@ -262,7 +350,13 @@ const MiPerfilScreen = ({ navigation }) => {
       <View style={styles.section}>
         <TouchableOpacity
           style={[styles.optionButton, { backgroundColor: theme.colors.card }]}
-          onPress={() => navigation.navigate('EditarPerfil', { paciente })}
+          onPress={() => {
+            if (paciente) {
+              navigation.navigate('EditarPerfil', { paciente });
+            } else {
+              Alert.alert('Error', 'No se puede editar el perfil en este momento');
+            }
+          }}
         >
           <Ionicons name="create-outline" size={24} color={theme.colors.primary} />
           <Text style={[styles.optionText, { color: theme.colors.text }]}>
@@ -286,8 +380,8 @@ const MiPerfilScreen = ({ navigation }) => {
           style={[styles.optionButton, { backgroundColor: theme.colors.card }]}
           onPress={handleLogout}
         >
-          <Ionicons name="log-out-outline" size={24} color={theme.colors.danger} />
-          <Text style={[styles.optionText, { color: theme.colors.danger }]}>
+          <Ionicons name="log-out-outline" size={24} color={theme.colors.danger || '#F44336'} />
+          <Text style={[styles.optionText, { color: theme.colors.danger || '#F44336' }]}>
             Cerrar Sesión
           </Text>
         </TouchableOpacity>
@@ -306,6 +400,22 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    margin: 15,
+    borderRadius: 10,
+    gap: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    flex: 1,
   },
   header: {
     paddingTop: 40,

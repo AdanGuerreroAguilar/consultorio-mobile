@@ -1,358 +1,285 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { pacientesAPI } from '../../api/pacientes';
+import apiClient from '../../api/client';
 
-const MiHistorialScreen = () => {
+const MiHistorialScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const [historial, setHistorial] = useState({
-    citas: [],
-    notas: [],
-    signos_vitales: [],
-  });
-  const [loading, setLoading] = useState(false);
-  const [seccionActiva, setSeccionActiva] = useState('citas');
+  const [historial, setHistorial] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtro, setFiltro] = useState('todos'); // todos, consultas, tratamientos
 
-  useEffect(() => {
-    cargarHistorial();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      cargarHistorial();
+    }, [filtro])
+  );
 
   const cargarHistorial = async () => {
     setLoading(true);
     try {
-      const data = await pacientesAPI.getHistorial(user.paciente_id);
-      setHistorial(data);
+      console.log('📋 Cargando historial para paciente:', user?.paciente_id);
+
+      if (!user?.paciente_id) {
+        console.warn('⚠️ No se encontró paciente_id');
+        setHistorial([]);
+        return;
+      }
+
+      // Intentar cargar desde el endpoint de historial
+      let historialData = [];
+      
+      try {
+        // Primero intenta el endpoint específico de historial
+        const response = await apiClient.get(`/pacientes/${user.paciente_id}/historial`);
+        historialData = Array.isArray(response.data) ? response.data : [];
+      } catch (error) {
+        console.log('Endpoint de historial no disponible, cargando citas completadas...');
+        
+        // Fallback: cargar citas completadas como historial
+        try {
+          const citasResponse = await apiClient.get('/citas');
+          const todasCitas = Array.isArray(citasResponse.data) ? citasResponse.data : [];
+          
+          // Filtrar citas completadas del paciente
+          historialData = todasCitas
+            .filter(cita => 
+              cita.paciente_id === user.paciente_id && 
+              (cita.estado === 'completada' || new Date(cita.fecha_hora) < new Date())
+            )
+            .map(cita => ({
+              id: cita.id,
+              tipo: 'consulta',
+              fecha: cita.fecha_hora,
+              titulo: cita.motivo || 'Consulta médica',
+              descripcion: cita.notas || cita.diagnostico || 'Sin detalles adicionales',
+              doctor: cita.doctor_nombre ? `Dr. ${cita.doctor_nombre} ${cita.doctor_apellido || ''}` : 'Doctor asignado',
+              estado: cita.estado,
+            }));
+        } catch (citasError) {
+          console.error('Error al cargar citas:', citasError);
+        }
+      }
+
+      // Aplicar filtros
+      let historialFiltrado = historialData;
+      if (filtro === 'consultas') {
+        historialFiltrado = historialData.filter(item => item.tipo === 'consulta');
+      } else if (filtro === 'tratamientos') {
+        historialFiltrado = historialData.filter(item => item.tipo === 'tratamiento');
+      }
+
+      // Ordenar por fecha (más reciente primero)
+      historialFiltrado.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+      console.log('✅ Historial cargado:', historialFiltrado.length, 'registros');
+      setHistorial(historialFiltrado);
+
     } catch (error) {
-      console.error('Error al cargar historial:', error);
-      Alert.alert('Error', 'No se pudo cargar el historial');
+      console.error('❌ Error al cargar historial:', error);
+      Alert.alert('Error', 'No se pudo cargar el historial médico');
     } finally {
       setLoading(false);
     }
   };
 
   const formatearFecha = (fechaStr) => {
-    const fecha = new Date(fechaStr);
-    return fecha.toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    try {
+      const fecha = new Date(fechaStr);
+      return fecha.toLocaleDateString('es-MX', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return fechaStr;
+    }
   };
 
-  const formatearFechaCompleta = (fechaStr) => {
-    const fecha = new Date(fechaStr);
-    return fecha.toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const getTipoIcon = (tipo) => {
+    const icons = {
+      consulta: 'medical-outline',
+      tratamiento: 'fitness-outline',
+      examen: 'flask-outline',
+      receta: 'document-text-outline',
+    };
+    return icons[tipo] || 'document-outline';
   };
 
-  const renderCitas = () => (
-    <View>
-      {historial.citas.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="calendar-outline" size={48} color={theme.colors.textSecondary} />
-          <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-            No hay citas en el historial
-          </Text>
-        </View>
-      ) : (
-        historial.citas.map((cita) => (
-          <View key={cita.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
-            <View style={styles.cardHeader}>
-              <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-                {cita.motivo}
-              </Text>
-              <View style={[
-                styles.badge,
-                { backgroundColor: theme.colors.primary + '20' }
-              ]}>
-                <Text style={[styles.badgeText, { color: theme.colors.primary }]}>
-                  {cita.estado}
-                </Text>
-              </View>
-            </View>
-            
-            <View style={styles.cardInfo}>
-              <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={[styles.cardInfoText, { color: theme.colors.textSecondary }]}>
-                {formatearFechaCompleta(cita.fecha_hora)}
-              </Text>
-            </View>
+  const getTipoColor = (tipo) => {
+    const colors = {
+      consulta: theme.colors.primary,
+      tratamiento: theme.colors.success || '#4CAF50',
+      examen: theme.colors.warning || '#FFC107',
+      receta: '#9C27B0',
+    };
+    return colors[tipo] || theme.colors.textSecondary;
+  };
 
-            <View style={styles.cardInfo}>
-              <Ionicons name="person-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={[styles.cardInfoText, { color: theme.colors.textSecondary }]}>
-                Dr. {cita.doctor_nombre} {cita.doctor_apellido}
-              </Text>
-            </View>
+  const renderHistorialItem = ({ item }) => {
+    const tipoColor = getTipoColor(item.tipo);
+
+    return (
+      <TouchableOpacity
+        style={[styles.historialCard, { backgroundColor: theme.colors.card }]}
+        onPress={() => {
+          // Navegar al detalle si existe
+          Alert.alert(
+            item.titulo,
+            `${item.descripcion}\n\nFecha: ${formatearFecha(item.fecha)}\n${item.doctor || ''}`,
+            [{ text: 'OK' }]
+          );
+        }}
+      >
+        <View style={styles.cardHeader}>
+          <View style={[styles.iconContainer, { backgroundColor: tipoColor + '20' }]}>
+            <Ionicons 
+              name={getTipoIcon(item.tipo)} 
+              size={24} 
+              color={tipoColor} 
+            />
           </View>
-        ))
-      )}
-    </View>
-  );
-
-  const renderNotas = () => (
-    <View>
-      {historial.notas.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={48} color={theme.colors.textSecondary} />
-          <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-            No hay notas médicas
-          </Text>
-        </View>
-      ) : (
-        historial.notas.map((nota) => (
-          <View key={nota.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-              {nota.titulo}
+          <View style={styles.headerInfo}>
+            <Text style={[styles.tipo, { color: tipoColor }]}>
+              {item.tipo?.charAt(0).toUpperCase() + item.tipo?.slice(1) || 'Registro'}
             </Text>
-            
-            <View style={styles.cardInfo}>
-              <Ionicons name="calendar-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={[styles.cardInfoText, { color: theme.colors.textSecondary }]}>
-                {formatearFecha(nota.fecha_nota)}
-              </Text>
-            </View>
-
-            <View style={styles.cardInfo}>
-              <Ionicons name="person-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={[styles.cardInfoText, { color: theme.colors.textSecondary }]}>
-                Dr. {nota.doctor_nombre}
-              </Text>
-            </View>
-
-            {nota.contenido && (
-              <Text style={[styles.notaContenido, { color: theme.colors.text }]} numberOfLines={3}>
-                {nota.contenido}
-              </Text>
-            )}
-
-            {nota.diagnostico && (
-              <View style={styles.diagnosticoContainer}>
-                <Text style={[styles.diagnosticoLabel, { color: theme.colors.textSecondary }]}>
-                  Diagnóstico:
-                </Text>
-                <Text style={[styles.diagnosticoText, { color: theme.colors.text }]}>
-                  {nota.diagnostico}
-                </Text>
-              </View>
-            )}
-
-            {nota.tratamiento && (
-              <View style={styles.tratamientoContainer}>
-                <Text style={[styles.tratamientoLabel, { color: theme.colors.textSecondary }]}>
-                  Tratamiento:
-                </Text>
-                <Text style={[styles.tratamientoText, { color: theme.colors.text }]}>
-                  {nota.tratamiento}
-                </Text>
-              </View>
-            )}
+            <Text style={[styles.fecha, { color: theme.colors.textSecondary }]}>
+              {formatearFecha(item.fecha)}
+            </Text>
           </View>
-        ))
-      )}
-    </View>
-  );
-
-  const renderSignos = () => (
-    <View>
-      {historial.signos_vitales.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="pulse-outline" size={48} color={theme.colors.textSecondary} />
-          <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-            No hay signos vitales registrados
-          </Text>
         </View>
-      ) : (
-        historial.signos_vitales.map((signo) => (
-          <View key={signo.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
-            <View style={styles.cardHeader}>
-              <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-                Registro de Signos Vitales
-              </Text>
-              <Text style={[styles.fechaSmall, { color: theme.colors.textSecondary }]}>
-                {formatearFecha(signo.fecha_registro)}
-              </Text>
-            </View>
 
-            <View style={styles.signosGrid}>
-              {signo.peso && (
-                <View style={styles.signoItem}>
-                  <Ionicons name="scale-outline" size={20} color={theme.colors.primary} />
-                  <Text style={[styles.signoLabel, { color: theme.colors.textSecondary }]}>
-                    Peso
-                  </Text>
-                  <Text style={[styles.signoValue, { color: theme.colors.text }]}>
-                    {signo.peso} kg
-                  </Text>
-                </View>
-              )}
+        <Text style={[styles.titulo, { color: theme.colors.text }]}>
+          {item.titulo}
+        </Text>
 
-              {signo.altura && (
-                <View style={styles.signoItem}>
-                  <Ionicons name="resize-outline" size={20} color={theme.colors.primary} />
-                  <Text style={[styles.signoLabel, { color: theme.colors.textSecondary }]}>
-                    Altura
-                  </Text>
-                  <Text style={[styles.signoValue, { color: theme.colors.text }]}>
-                    {signo.altura} m
-                  </Text>
-                </View>
-              )}
+        {item.descripcion && (
+          <Text 
+            style={[styles.descripcion, { color: theme.colors.textSecondary }]}
+            numberOfLines={2}
+          >
+            {item.descripcion}
+          </Text>
+        )}
 
-              {signo.presion_sistolica && signo.presion_diastolica && (
-                <View style={styles.signoItem}>
-                  <Ionicons name="heart-outline" size={20} color={theme.colors.danger} />
-                  <Text style={[styles.signoLabel, { color: theme.colors.textSecondary }]}>
-                    Presión
-                  </Text>
-                  <Text style={[styles.signoValue, { color: theme.colors.text }]}>
-                    {signo.presion_sistolica}/{signo.presion_diastolica}
-                  </Text>
-                </View>
-              )}
-
-              {signo.temperatura && (
-                <View style={styles.signoItem}>
-                  <Ionicons name="thermometer-outline" size={20} color={theme.colors.warning} />
-                  <Text style={[styles.signoLabel, { color: theme.colors.textSecondary }]}>
-                    Temp.
-                  </Text>
-                  <Text style={[styles.signoValue, { color: theme.colors.text }]}>
-                    {signo.temperatura}°C
-                  </Text>
-                </View>
-              )}
-
-              {signo.frecuencia_cardiaca && (
-                <View style={styles.signoItem}>
-                  <Ionicons name="pulse" size={20} color={theme.colors.danger} />
-                  <Text style={[styles.signoLabel, { color: theme.colors.textSecondary }]}>
-                    FC
-                  </Text>
-                  <Text style={[styles.signoValue, { color: theme.colors.text }]}>
-                    {signo.frecuencia_cardiaca} lpm
-                  </Text>
-                </View>
-              )}
-
-              {signo.saturacion_oxigeno && (
-                <View style={styles.signoItem}>
-                  <Ionicons name="water-outline" size={20} color={theme.colors.primary} />
-                  <Text style={[styles.signoLabel, { color: theme.colors.textSecondary }]}>
-                    SpO2
-                  </Text>
-                  <Text style={[styles.signoValue, { color: theme.colors.text }]}>
-                    {signo.saturacion_oxigeno}%
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {signo.notas && (
-              <View style={styles.notasSignos}>
-                <Text style={[styles.notasSignosText, { color: theme.colors.textSecondary }]}>
-                  {signo.notas}
-                </Text>
-              </View>
-            )}
+        {item.doctor && (
+          <View style={styles.doctorRow}>
+            <Ionicons 
+              name="person-outline" 
+              size={16} 
+              color={theme.colors.textSecondary} 
+            />
+            <Text style={[styles.doctorText, { color: theme.colors.textSecondary }]}>
+              {item.doctor}
+            </Text>
           </View>
-        ))
-      )}
-    </View>
-  );
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  // Loading state
+  if (loading && historial.length === 0) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+          Cargando historial...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Tabs */}
-      <View style={[styles.tabs, { backgroundColor: theme.colors.card }]}>
-        <TouchableOpacity
-          style={[
-            styles.tab,
-            seccionActiva === 'citas' && { borderBottomColor: theme.colors.primary }
-          ]}
-          onPress={() => setSeccionActiva('citas')}
-        >
-          <Ionicons
-            name="calendar-outline"
-            size={24}
-            color={seccionActiva === 'citas' ? theme.colors.primary : theme.colors.textSecondary}
-          />
-          <Text style={[
-            styles.tabText,
-            { color: seccionActiva === 'citas' ? theme.colors.primary : theme.colors.textSecondary }
-          ]}>
-            Citas
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.tab,
-            seccionActiva === 'notas' && { borderBottomColor: theme.colors.primary }
-          ]}
-          onPress={() => setSeccionActiva('notas')}
-        >
-          <Ionicons
-            name="document-text-outline"
-            size={24}
-            color={seccionActiva === 'notas' ? theme.colors.primary : theme.colors.textSecondary}
-          />
-          <Text style={[
-            styles.tabText,
-            { color: seccionActiva === 'notas' ? theme.colors.primary : theme.colors.textSecondary }
-          ]}>
-            Notas
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.tab,
-            seccionActiva === 'signos' && { borderBottomColor: theme.colors.primary }
-          ]}
-          onPress={() => setSeccionActiva('signos')}
-        >
-          <Ionicons
-            name="pulse-outline"
-            size={24}
-            color={seccionActiva === 'signos' ? theme.colors.primary : theme.colors.textSecondary}
-          />
-          <Text style={[
-            styles.tabText,
-            { color: seccionActiva === 'signos' ? theme.colors.primary : theme.colors.textSecondary }
-          ]}>
-            Signos
-          </Text>
-        </TouchableOpacity>
+      {/* Filtros */}
+      <View style={styles.filtros}>
+        {['todos', 'consultas', 'tratamientos'].map((tipo) => (
+          <TouchableOpacity
+            key={tipo}
+            style={[
+              styles.filtroButton,
+              filtro === tipo && { backgroundColor: theme.colors.primary },
+              { borderColor: theme.colors.primary }
+            ]}
+            onPress={() => setFiltro(tipo)}
+          >
+            <Text style={[
+              styles.filtroText,
+              filtro === tipo
+                ? { color: '#FFFFFF' }
+                : { color: theme.colors.primary }
+            ]}>
+              {tipo === 'todos' ? 'Todos' : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {/* Contenido */}
-      <ScrollView
-        style={styles.content}
+      {/* Resumen */}
+      <View style={[styles.resumenCard, { backgroundColor: theme.colors.primary + '15' }]}>
+        <View style={styles.resumenItem}>
+          <Text style={[styles.resumenValor, { color: theme.colors.primary }]}>
+            {historial.length}
+          </Text>
+          <Text style={[styles.resumenLabel, { color: theme.colors.textSecondary }]}>
+            Registros
+          </Text>
+        </View>
+        <View style={[styles.resumenDivider, { backgroundColor: theme.colors.border }]} />
+        <View style={styles.resumenItem}>
+          <Text style={[styles.resumenValor, { color: theme.colors.primary }]}>
+            {historial.filter(h => h.tipo === 'consulta').length}
+          </Text>
+          <Text style={[styles.resumenLabel, { color: theme.colors.textSecondary }]}>
+            Consultas
+          </Text>
+        </View>
+      </View>
+
+      {/* Lista de historial */}
+      <FlatList
+        data={historial}
+        renderItem={renderHistorialItem}
+        keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+        contentContainerStyle={styles.lista}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={cargarHistorial} />
+          <RefreshControl 
+            refreshing={loading} 
+            onRefresh={cargarHistorial}
+            colors={[theme.colors.primary]}
+          />
         }
-      >
-        {seccionActiva === 'citas' && renderCitas()}
-        {seccionActiva === 'notas' && renderNotas()}
-        {seccionActiva === 'signos' && renderSignos()}
-      </ScrollView>
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons 
+              name="document-text-outline" 
+              size={64} 
+              color={theme.colors.textSecondary} 
+            />
+            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+              No hay registros en tu historial médico
+            </Text>
+            <Text style={[styles.emptySubtext, { color: theme.colors.textSecondary }]}>
+              Tus consultas completadas aparecerán aquí
+            </Text>
+          </View>
+        }
+      />
     </View>
   );
 };
@@ -361,36 +288,63 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  tabs: {
-    flexDirection: 'row',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  tab: {
+  loadingContainer: {
     flex: 1,
-    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 15,
-    gap: 8,
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
   },
-  content: {
+  filtros: {
+    flexDirection: 'row',
+    padding: 15,
+    gap: 10,
+  },
+  filtroButton: {
     flex: 1,
-    padding: 15,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    alignItems: 'center',
   },
-  card: {
+  filtroText: {
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  resumenCard: {
+    flexDirection: 'row',
+    marginHorizontal: 15,
+    marginBottom: 10,
     padding: 15,
+    borderRadius: 12,
+    justifyContent: 'space-around',
+  },
+  resumenItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  resumenValor: {
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  resumenLabel: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  resumenDivider: {
+    width: 1,
+    marginVertical: 5,
+  },
+  lista: {
+    padding: 15,
+    paddingTop: 5,
+  },
+  historialCard: {
+    padding: 16,
     borderRadius: 15,
-    marginBottom: 15,
+    marginBottom: 12,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -399,102 +353,48 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerInfo: {
+    marginLeft: 12,
     flex: 1,
-    marginRight: 10,
   },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
+  tipo: {
     fontSize: 12,
     fontWeight: '600',
-    textTransform: 'capitalize',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  cardInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  cardInfoText: {
-    fontSize: 14,
-    marginLeft: 8,
-  },
-  notaContenido: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 10,
-  },
-  diagnosticoContainer: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: 'rgba(255, 159, 10, 0.1)',
-    borderRadius: 8,
-  },
-  diagnosticoLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  diagnosticoText: {
-    fontSize: 14,
-  },
-  tratamientoContainer: {
-    marginTop: 10,
-    padding: 10,
-    backgroundColor: 'rgba(52, 199, 89, 0.1)',
-    borderRadius: 8,
-  },
-  tratamientoLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  tratamientoText: {
-    fontSize: 14,
-  },
-  fechaSmall: {
-    fontSize: 12,
-  },
-  signosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 10,
-    gap: 10,
-  },
-  signoItem: {
-    width: '30%',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0, 122, 255, 0.05)',
-  },
-  signoLabel: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  signoValue: {
-    fontSize: 16,
-    fontWeight: '600',
+  fecha: {
+    fontSize: 13,
     marginTop: 2,
   },
-  notasSignos: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+  titulo: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 6,
   },
-  notasSignosText: {
+  descripcion: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  doctorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  doctorText: {
     fontSize: 13,
-    fontStyle: 'italic',
+    marginLeft: 6,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -504,6 +404,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     marginTop: 15,
+    fontWeight: '500',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 

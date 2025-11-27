@@ -1,29 +1,15 @@
-import React, { useEffect } from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { AuthProvider } from './src/context/AuthContext';
+import React from 'react';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
-import { pedirPermisosNotificaciones } from './src/utils/notifications';
-
-console.log('🚀 App iniciando...');
+console.log('🚀 App iniciando - Test AppNavigator...');
 
 export default function App() {
-
-  useEffect(() => {
-    const initNotificaciones = async () => {
-      const permiso = await pedirPermisosNotificaciones();
-      console.log("🔔 Permiso notificaciones:", permiso);
-    };
-
-    initNotificaciones();
-  }, []);
-
   return (
     <ThemeProvider>
       <AuthProvider>
         <AppNavigator />
-        <StatusBar style="auto" />
       </AuthProvider>
     </ThemeProvider>
   );
