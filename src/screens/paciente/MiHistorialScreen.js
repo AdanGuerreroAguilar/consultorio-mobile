@@ -31,11 +31,24 @@ const MiHistorialScreen = () => {
   const cargarHistorial = async () => {
     setLoading(true);
     try {
+      console.log('🔄 Cargando historial para paciente_id:', user?.paciente_id);
+      console.log('👤 Usuario actual:', user);
+
+      if (!user || !user.paciente_id) {
+        console.error('❌ No hay usuario o paciente_id - cancelando carga de historial');
+        Alert.alert('Error', 'Sesión no válida. Por favor, inicia sesión nuevamente.');
+        setLoading(false);
+        return;
+      }
+
       const data = await pacientesAPI.getHistorial(user.paciente_id);
       setHistorial(data);
+      console.log('✅ Historial cargado correctamente');
     } catch (error) {
-      console.error('Error al cargar historial:', error);
-      Alert.alert('Error', 'No se pudo cargar el historial');
+      console.error('❌ Error al cargar historial:', error);
+      console.error('❌ Error detail:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      Alert.alert('Error', 'No se pudo cargar el historial. ' + (error.response?.data?.detail || error.message));
     } finally {
       setLoading(false);
     }

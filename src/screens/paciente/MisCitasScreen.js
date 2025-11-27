@@ -30,16 +30,28 @@ const MisCitasScreen = ({ navigation }) => {
   const cargarCitas = async () => {
     setLoading(true);
     try {
+      console.log('🔄 Cargando citas para paciente_id:', user?.paciente_id);
+      console.log('👤 Usuario actual:', user);
+
+      if (!user || !user.paciente_id) {
+        console.error('❌ No hay usuario o paciente_id - cancelando carga de citas');
+        Alert.alert('Error', 'Sesión no válida. Por favor, inicia sesión nuevamente.');
+        setLoading(false);
+        return;
+      }
+
       const response = await citasAPI.getCitas();
+      console.log('✅ Citas recibidas:', response?.length || 0);
+
       // Filtrar solo mis citas
       const misCitas = response.filter(
         cita => cita.paciente_id === user.paciente_id
       );
-      
+
       // Aplicar filtro
       const ahora = new Date();
       let citasFiltradas = misCitas;
-      
+
       if (filtro === 'proximas') {
         citasFiltradas = misCitas.filter(
           cita => new Date(cita.fecha_hora) >= ahora
@@ -49,16 +61,19 @@ const MisCitasScreen = ({ navigation }) => {
           cita => new Date(cita.fecha_hora) < ahora
         );
       }
-      
+
       // Ordenar por fecha
-      citasFiltradas.sort((a, b) => 
+      citasFiltradas.sort((a, b) =>
         new Date(b.fecha_hora) - new Date(a.fecha_hora)
       );
-      
+
       setCitas(citasFiltradas);
+      console.log('✅ Citas filtradas y ordenadas:', citasFiltradas.length);
     } catch (error) {
-      console.error('Error al cargar citas:', error);
-      Alert.alert('Error', 'No se pudieron cargar las citas');
+      console.error('❌ Error al cargar citas:', error);
+      console.error('❌ Error detail:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      Alert.alert('Error', 'No se pudieron cargar las citas. ' + (error.response?.data?.detail || error.message));
     } finally {
       setLoading(false);
     }

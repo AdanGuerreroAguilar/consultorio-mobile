@@ -18,16 +18,24 @@ apiClient.interceptors.request.use(
   async (config) => {
     try {
       const token = await AsyncStorage.getItem('token');
+      console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
+      console.log(`🔑 Token: ${token ? 'Presente (' + token.substring(0, 20) + '...)' : 'NO ENCONTRADO'}`);
+
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log(`✅ Header Authorization agregado`);
+      } else {
+        console.warn(`⚠️ No se encontró token en AsyncStorage - Request sin autenticación`);
       }
-      console.log(`📤 ${config.method?.toUpperCase()} ${config.url}`);
     } catch (error) {
-      console.error('Error al obtener token:', error);
+      console.error('❌ Error crítico al obtener token:', error);
+      // Si hay un error al obtener el token, aún devolvemos la config
+      // pero el request fallará en el backend con 401/403
     }
     return config;
   },
   (error) => {
+    console.error('❌ Error en request interceptor:', error);
     return Promise.reject(error);
   }
 );

@@ -17,21 +17,24 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = await AsyncStorage.getItem('token');
       const userData = await AsyncStorage.getItem('user');
-      
+
       console.log('📥 Cargando usuario desde storage...');
-      console.log('Token:', token ? 'Existe' : 'No existe');
-      console.log('User data:', userData);
-      
+      console.log('🔑 Token:', token ? 'Existe (' + token.substring(0, 20) + '...)' : '❌ NO EXISTE');
+      console.log('👤 User data:', userData ? 'Existe' : '❌ NO EXISTE');
+
       if (token && userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         setIsAuthenticated(true);
         console.log('✅ Usuario cargado:', parsedUser);
+        console.log('✅ Token disponible para requests');
       } else {
-        console.log('❌ No hay sesión guardada');
+        console.log('❌ No hay sesión guardada - Token o userData faltante');
+        if (!token) console.error('❌ TOKEN FALTANTE en AsyncStorage');
+        if (!userData) console.error('❌ USER DATA FALTANTE en AsyncStorage');
       }
     } catch (error) {
-      console.error('Error al cargar usuario:', error);
+      console.error('❌ Error al cargar usuario desde AsyncStorage:', error);
     } finally {
       setLoading(false);
     }
@@ -41,28 +44,31 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('🔐 Intentando login...');
       const response = await authAPI.login(email, password);
-      
+
       console.log('📨 Respuesta del servidor:', response);
-      
+      console.log('🔑 Token recibido:', response.access_token ? 'Sí (' + response.access_token.substring(0, 20) + '...)' : 'NO');
+
       // Guardar en AsyncStorage
       await AsyncStorage.setItem('token', response.access_token);
       await AsyncStorage.setItem('user', JSON.stringify(response.usuario));
-      
-      console.log('💾 Guardado en storage');
-      console.log('Usuario:', response.usuario);
-      
+
+      // Verificar que se guardó correctamente
+      const tokenGuardado = await AsyncStorage.getItem('token');
+      console.log('💾 Token guardado en storage:', tokenGuardado ? 'Sí (' + tokenGuardado.substring(0, 20) + '...)' : 'NO');
+      console.log('💾 Usuario guardado:', response.usuario);
+
       // Actualizar estado
       setUser(response.usuario);
       setIsAuthenticated(true);
-      
+
       console.log('✅ Login exitoso, estado actualizado');
-      
+
       return { success: true, user: response.usuario };
     } catch (error) {
       console.error('❌ Error en login:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.detail || 'Error al iniciar sesión' 
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Error al iniciar sesión'
       };
     }
   };
