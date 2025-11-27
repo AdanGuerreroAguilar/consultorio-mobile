@@ -26,6 +26,8 @@ const CrearUsuarioScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [rol, setRol] = useState('');
   const [password, setPassword] = useState('');
+  const [especialidad, setEspecialidad] = useState('');
+  const [telefono, setTelefono] = useState('');
   const [loading, setLoading] = useState(false);
 
   // ============================================================
@@ -57,7 +59,7 @@ const CrearUsuarioScreen = ({ navigation }) => {
     // Confirmación de seguridad
     Alert.alert(
       "Confirmación",
-      "¿Registrar este usuario?",
+      `¿Registrar a ${nombre} ${apellido} como ${rol}?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -77,9 +79,12 @@ const CrearUsuarioScreen = ({ navigation }) => {
         email: email.toLowerCase().trim(),
         rol,
         password: password.trim(),
+        telefono: telefono.trim() || null,
+        especialidad: rol === 'doctor' ? especialidad.trim() : null,
       };
 
-      await apiClient.post('/usuarios', datos);
+      // ✅ CORREGIDO: Ruta con /api/
+      await apiClient.post('/api/usuarios', datos);
 
       Alert.alert("Éxito", "Usuario creado correctamente", [
         { text: "OK", onPress: () => navigation.goBack() }
@@ -148,6 +153,19 @@ const CrearUsuarioScreen = ({ navigation }) => {
           />
         </View>
 
+        {/* Teléfono */}
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Teléfono</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+            value={telefono}
+            onChangeText={setTelefono}
+            placeholder="442-123-4567"
+            placeholderTextColor={theme.colors.textSecondary}
+            keyboardType="phone-pad"
+          />
+        </View>
+
         {/* Rol */}
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Rol *</Text>
@@ -165,6 +183,20 @@ const CrearUsuarioScreen = ({ navigation }) => {
           </View>
         </View>
 
+        {/* Especialidad (solo si es doctor) */}
+        {rol === 'doctor' && (
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Especialidad</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+              value={especialidad}
+              onChangeText={setEspecialidad}
+              placeholder="Ej: Pediatría, Cardiología..."
+              placeholderTextColor={theme.colors.textSecondary}
+            />
+          </View>
+        )}
+
         {/* Contraseña */}
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Contraseña *</Text>
@@ -172,7 +204,7 @@ const CrearUsuarioScreen = ({ navigation }) => {
             style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
             value={password}
             onChangeText={setPassword}
-            placeholder="Contraseña"
+            placeholder="Mínimo 6 caracteres"
             placeholderTextColor={theme.colors.textSecondary}
             secureTextEntry
           />
@@ -233,6 +265,7 @@ const styles = StyleSheet.create({
 
   pickerContainer: {
     borderRadius: 12,
+    overflow: 'hidden',
   },
 
   crearButton: {

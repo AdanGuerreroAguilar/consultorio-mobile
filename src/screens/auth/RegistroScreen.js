@@ -36,6 +36,9 @@ const RegistroScreen = ({ navigation }) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  // ========================================
+  // ✅ VALIDAR FORMULARIO
+  // ========================================
   const validarFormulario = () => {
     // Validar campos obligatorios
     if (!formData.nombre.trim() || !formData.apellido.trim()) {
@@ -104,6 +107,9 @@ const RegistroScreen = ({ navigation }) => {
     return true;
   };
 
+  // ========================================
+  // 📝 MANEJAR REGISTRO
+  // ========================================
   const handleRegistro = async () => {
     if (!validarFormulario()) {
       return;
@@ -130,11 +136,11 @@ const RegistroScreen = ({ navigation }) => {
       console.log('✅ Registro exitoso:', response);
 
       Alert.alert(
-        'Registro Exitoso',
+        '¡Registro Exitoso!',
         'Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión.',
         [
           {
-            text: 'OK',
+            text: 'Iniciar Sesión',
             onPress: () => navigation.navigate('Login'),
           },
         ]
@@ -176,6 +182,13 @@ const RegistroScreen = ({ navigation }) => {
       >
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+          </TouchableOpacity>
+          
           <View style={[styles.logoCircle, { backgroundColor: theme.colors.primary + '20' }]}>
             <Ionicons name="person-add" size={48} color={theme.colors.primary} />
           </View>
@@ -183,18 +196,18 @@ const RegistroScreen = ({ navigation }) => {
             Crear Cuenta
           </Text>
           <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-            Completa el formulario para registrarte
+            Regístrate como paciente
           </Text>
         </View>
 
         {/* Formulario */}
-        <View style={styles.form}>
+        <View style={[styles.form, { backgroundColor: theme.colors.card }]}>
           {/* Nombre */}
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Nombre *
             </Text>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.colors.border }]}>
               <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
@@ -213,7 +226,7 @@ const RegistroScreen = ({ navigation }) => {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Apellido *
             </Text>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.colors.border }]}>
               <Ionicons name="person-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
@@ -232,7 +245,7 @@ const RegistroScreen = ({ navigation }) => {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Correo electrónico *
             </Text>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.colors.border }]}>
               <Ionicons name="mail-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
@@ -253,7 +266,7 @@ const RegistroScreen = ({ navigation }) => {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Contraseña *
             </Text>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.colors.border }]}>
               <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
@@ -276,11 +289,11 @@ const RegistroScreen = ({ navigation }) => {
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Confirmar contraseña *
             </Text>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.colors.border }]}>
               <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
-                placeholder="Confirma tu contraseña"
+                placeholder="Repite tu contraseña"
                 placeholderTextColor={theme.colors.textSecondary}
                 value={formData.confirmarPassword}
                 onChangeText={(text) => handleChange('confirmarPassword', text)}
@@ -297,9 +310,9 @@ const RegistroScreen = ({ navigation }) => {
           {/* Teléfono */}
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
-              Teléfono
+              Teléfono (opcional)
             </Text>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.colors.border }]}>
               <Ionicons name="call-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
@@ -316,9 +329,9 @@ const RegistroScreen = ({ navigation }) => {
           {/* Fecha de Nacimiento */}
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
-              Fecha de nacimiento
+              Fecha de nacimiento (opcional)
             </Text>
-            <View style={[styles.inputWrapper, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <View style={[styles.inputWrapper, { borderColor: theme.colors.border }]}>
               <Ionicons name="calendar-outline" size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
               <TextInput
                 style={[styles.input, { color: theme.colors.text }]}
@@ -354,7 +367,7 @@ const RegistroScreen = ({ navigation }) => {
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')} disabled={loading}>
               <Text style={[styles.linkText, { color: theme.colors.primary }]}>
-                Inicia sesión aquí
+                Inicia sesión
               </Text>
             </TouchableOpacity>
           </View>
@@ -373,9 +386,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   header: {
-    marginTop: 20,
-    marginBottom: 30,
+    marginTop: 10,
+    marginBottom: 20,
     alignItems: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    padding: 10,
   },
   logoCircle: {
     width: 100,
@@ -396,6 +415,13 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   inputContainer: {
     marginBottom: 16,
@@ -445,7 +471,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: 20,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   footerText: {
     fontSize: 14,

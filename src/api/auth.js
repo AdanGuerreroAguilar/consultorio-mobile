@@ -1,17 +1,21 @@
 import client, { setAuthToken } from './client';
 
 const authAPI = {
-  // Login
+  // ========================================
+  // 🔐 LOGIN
+  // ========================================
   login: async (email, password) => {
     try {
-      console.log('🔐 Intentando login:', { email });
+      console.log('🔐 [AUTH] Intentando login:', email);
       
-      const response = await client.post('/auth/login', {
-        email,
+      const response = await client.post('/api/auth/login', {
+        email: email.toLowerCase().trim(),
         password,
       });
 
-      console.log('✅ Login exitoso:', response.data);
+      console.log('✅ [AUTH] Login exitoso');
+      console.log('   👤 Usuario:', response.data.usuario?.nombre);
+      console.log('   🎭 Rol:', response.data.usuario?.rol);
 
       // Guardar el token automáticamente
       if (response.data.access_token) {
@@ -20,36 +24,60 @@ const authAPI = {
 
       return response.data;
     } catch (error) {
-      console.error('❌ Error en login:', error.response?.data || error.message);
+      console.error('❌ [AUTH] Error en login:', error.response?.data || error.message);
       throw error;
     }
   },
 
-  // Registro de paciente
+  // ========================================
+  // 📝 REGISTRO DE PACIENTE
+  // ========================================
   registroPaciente: async (datos) => {
     try {
-      console.log('📝 Registrando paciente:', datos);
+      console.log('📝 [AUTH] Registrando paciente:', datos.email);
       
-      const response = await client.post('/auth/registro-paciente', datos);
+      const response = await client.post('/api/auth/registro-paciente', {
+        email: datos.email.toLowerCase().trim(),
+        password: datos.password,
+        nombre: datos.nombre.trim(),
+        apellido: datos.apellido.trim(),
+        telefono: datos.telefono || null,
+        fecha_nacimiento: datos.fecha_nacimiento || null,
+        genero: datos.genero || 'Otro',
+        direccion: datos.direccion || null,
+        alergias: datos.alergias || null,
+        tipo_sangre: datos.tipo_sangre || null,
+      });
 
-      console.log('✅ Registro exitoso:', response.data);
-
+      console.log('✅ [AUTH] Registro exitoso');
       return response.data;
     } catch (error) {
-      console.error('❌ Error en registro:', error.response?.data || error.message);
+      console.error('❌ [AUTH] Error en registro:', error.response?.data || error.message);
       throw error;
     }
   },
 
-  // Obtener información del usuario actual
+  // ========================================
+  // 👤 OBTENER USUARIO ACTUAL
+  // ========================================
   me: async () => {
     try {
-      const response = await client.get('/auth/me');
+      console.log('👤 [AUTH] Obteniendo usuario actual...');
+      const response = await client.get('/api/auth/me');
+      console.log('✅ [AUTH] Usuario obtenido:', response.data?.nombre);
       return response.data;
     } catch (error) {
-      console.error('❌ Error obteniendo usuario:', error.response?.data || error.message);
+      console.error('❌ [AUTH] Error obteniendo usuario:', error.response?.data || error.message);
       throw error;
     }
+  },
+
+  // ========================================
+  // 🚪 LOGOUT (limpiar token)
+  // ========================================
+  logout: () => {
+    setAuthToken(null);
+    console.log('🚪 [AUTH] Sesión cerrada');
   },
 };
 

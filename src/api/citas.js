@@ -1,62 +1,42 @@
-import apiClient from './client';
-import { programarNotificacion } from '../utils/notifications';
+// api/citas.js
+import client from "./client";
 
 export const citasAPI = {
   // Obtener todas las citas
-  getCitas: async (fecha = null) => {
-    const params = fecha ? `?fecha=${fecha}` : '';
-    const response = await apiClient.get(`/citas${params}`);
+  getCitas: async () => {
+    const response = await client.get("/api/citas");
+    return response.data;
+  },
+
+  // Obtener una cita por ID
+  getCita: async (id) => {
+    const response = await client.get(`/api/citas/${id}`);
     return response.data;
   },
 
   // Crear cita
   crearCita: async (datos) => {
-    const response = await apiClient.post('/citas', datos);
-
-    try {
-      const fechaCita = new Date(datos.fecha_hora);
-
-      // RECORDATORIO 24 HORAS ANTES
-      const recordatorio1 = new Date(fechaCita.getTime() - 24 * 60 * 60 * 1000);
-
-      await programarNotificacion(
-        "Recordatorio de cita",
-        "Tienes una cita mañana.",
-        recordatorio1
-      );
-
-      // RECORDATORIO 30 MINUTOS ANTES
-      const recordatorio2 = new Date(fechaCita.getTime() - 30 * 60 * 1000);
-
-      await programarNotificacion(
-        "Tu cita está por comenzar",
-        "Tu cita inicia en 30 minutos.",
-        recordatorio2
-      );
-
-      // OPCIONAL: NOTIFICACIÓN INSTANTÁNEA DE PRUEBA (5 segundos)
-      await programarNotificacion(
-        "Cita creada",
-        "Tu cita se registró correctamente.",
-        new Date(Date.now() + 5000)
-      );
-
-    } catch (error) {
-      console.log("Error al programar notificaciones:", error);
-    }
-
+    const response = await client.post("/api/citas", datos);
     return response.data;
   },
 
   // Actualizar cita
   actualizarCita: async (id, datos) => {
-    const response = await apiClient.put(`/citas/${id}`, datos);
+    const response = await client.put(`/api/citas/${id}`, datos);
+    return response.data;
+  },
+
+  // Cancelar cita (cambiar estado)
+  cancelarCita: async (id) => {
+    const response = await client.put(`/api/citas/${id}`, { estado: "cancelada" });
     return response.data;
   },
 
   // Eliminar cita
   eliminarCita: async (id) => {
-    const response = await apiClient.delete(`/citas/${id}`);
+    const response = await client.delete(`/api/citas/${id}`);
     return response.data;
   },
 };
+
+export default citasAPI;

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// screens/doctor/HomeDoctorScreen.js
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,79 +8,93 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../context/ThemeContext';
-import { useAuth } from '../../context/AuthContext';
-import apiClient from '../../api/client';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
+import client from "../../api/client";
 
 const HomeDoctorScreen = ({ navigation }) => {
-  const [stats, setStats] = useState({
-    totalPacientes: 0,
-    citasHoy: 0,
-    citasPendientes: 0,
-  });
+  const { user } = useAuth();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
-  const { theme } = useTheme();
-  const { user, logout } = useAuth();
+  const [stats, setStats] = useState({
+    citasHoy: 0,
+    citasPendientes: 0,
+    totalPacientes: 0,
+  });
+  const [citasProximas, setCitasProximas] = useState([]);
 
-  useEffect(() => {
-    cargarEstadisticas();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      cargarDatos();
+    }, [user])
+  );
 
-  const cargarEstadisticas = async () => {
+  const cargarDatos = async () => {
+    if (!refreshing) setLoading(true);
+
     try {
-      const [pacientesRes, citasRes] = await Promise.all([
-        apiClient.get('/pacientes'),
-        apiClient.get('/citas'),
-      ]);
+      // Obtener todas las citas
+      const resCitas = await client.get("/api/citas");
+      const todasCitas = resCitas.data || [];
 
-      // Filtrar pacientes del doctor
-      const misPacientes = pacientesRes.data.filter(
-        p => p.doctor_id === user.id
-      );
-
-      // Filtrar citas del doctor
-      const misCitas = citasRes.data.filter(
-        c => c.doctor_id === user.id
+      // Filtrar citas del doctor actual
+      const misCitas = todasCitas.filter(
+        (c) => c.doctor_id === user?.id || c.doctor_id === parseInt(user?.id)
       );
 
       // Citas de hoy
-      const hoy = new Date().toDateString();
-      const citasHoy = misCitas.filter(
-        c => new Date(c.fecha_hora).toDateString() === hoy
-      ).length;
+      const hoy = new Date().toISOString().split("T")[0];
+      const citasHoy = misCitas.filter((c) => c.fecha_hora?.startsWith(hoy));
 
-      // Citas pendientes
-      const citasPendientes = misCitas.filter(
-        c => ['Programada', 'Confirmada'].includes(c.estado)
-      ).length;
+      // Citas pendientes (futuras)
+      const ahora = new Date();
+      const pendientes = misCitas.filter(
+        (c) => new Date(c.fecha_hora) >= ahora && c.estado !== "cancelada"
+      );
+
+      // Próximas 5 citas
+      const proximas = pendientes
+        .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora))
+        .slice(0, 5);
+
+      // Total pacientes
+      const resPacientes = await client.get("/api/pacientes");
+      const totalPacientes = resPacientes.data?.length || 0;
 
       setStats({
-        totalPacientes: misPacientes.length,
-        citasHoy,
-        citasPendientes,
+        citasHoy: citasHoy.length,
+        citasPendientes: pendientes.length,
+        totalPacientes,
       });
+      setCitasProximas(proximas);
     } catch (error) {
-      console.error('Error al cargar estadísticas:', error);
+      console.error("Error al cargar datos:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await cargarEstadisticas();
-    setRefreshing(false);
+  const formatearFecha = (fechaStr) => {
+    try {
+      const fecha = new Date(fechaStr);
+      return fecha.toLocaleDateString("es-MX", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return fechaStr;
+    }
   };
 
-  const handleLogout = () => {
-    logout();
-  };
-
-  if (loading) {
+  if (loading && !refreshing) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -91,45 +106,33 @@ const HomeDoctorScreen = ({ navigation }) => {
     <ScrollView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            cargarDatos();
+          }}
+          colors={[theme.colors.primary]}
+        />
       }
     >
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.welcomeText}>¡Hola Doctor!</Text>
-            <Text style={styles.nameText}>
-              {user?.nombre} {user?.apellido}
-            </Text>
-            {user?.especialidad && (
-              <Text style={styles.especialidadText}>{user.especialidad}</Text>
-            )}
-          </View>
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.greeting}>
+          Hola, Dr. {user?.nombre} {user?.apellido}
+        </Text>
+        {user?.especialidad && (
+          <Text style={styles.specialty}>{user.especialidad}</Text>
+        )}
       </View>
 
-      {/* Estadísticas */}
+      {/* Stats */}
       <View style={styles.statsContainer}>
         <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
-          <Ionicons name="people" size={32} color={theme.colors.primary} />
-          <Text style={[styles.statNumber, { color: theme.colors.text }]}>
-            {stats.totalPacientes}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-            Pacientes
-          </Text>
-        </View>
-
-        <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
-          <Ionicons name="today" size={32} color={theme.colors.success} />
-          <Text style={[styles.statNumber, { color: theme.colors.text }]}>
+          <View style={[styles.statIcon, { backgroundColor: "#2196F320" }]}>
+            <Ionicons name="today" size={24} color="#2196F3" />
+          </View>
+          <Text style={[styles.statValue, { color: theme.colors.text }]}>
             {stats.citasHoy}
           </Text>
           <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
@@ -138,183 +141,135 @@ const HomeDoctorScreen = ({ navigation }) => {
         </View>
 
         <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
-          <Ionicons name="time" size={32} color={theme.colors.warning} />
-          <Text style={[styles.statNumber, { color: theme.colors.text }]}>
+          <View style={[styles.statIcon, { backgroundColor: "#FFC10720" }]}>
+            <Ionicons name="time" size={24} color="#FFC107" />
+          </View>
+          <Text style={[styles.statValue, { color: theme.colors.text }]}>
             {stats.citasPendientes}
           </Text>
           <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
             Pendientes
           </Text>
         </View>
+
+        <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
+          <View style={[styles.statIcon, { backgroundColor: "#4CAF5020" }]}>
+            <Ionicons name="people" size={24} color="#4CAF50" />
+          </View>
+          <Text style={[styles.statValue, { color: theme.colors.text }]}>
+            {stats.totalPacientes}
+          </Text>
+          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
+            Pacientes
+          </Text>
+        </View>
       </View>
 
-      {/* Acciones Rápidas */}
+      {/* Próximas citas */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Acciones Rápidas
+          Próximas Citas
         </Text>
 
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: theme.colors.card }]}
-          onPress={() => navigation.navigate('Pacientes', { screen: 'ListaPacientes' })}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.primary + '20' }]}>
-            <Ionicons name="people-outline" size={24} color={theme.colors.primary} />
-          </View>
-          <View style={styles.actionContent}>
-            <Text style={[styles.actionTitle, { color: theme.colors.text }]}>
-              Ver Pacientes
-            </Text>
-            <Text style={[styles.actionSubtitle, { color: theme.colors.textSecondary }]}>
-              Lista completa de pacientes
+        {citasProximas.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: theme.colors.card }]}>
+            <Ionicons name="calendar-outline" size={48} color={theme.colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+              No tienes citas próximas
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: theme.colors.card }]}
-          onPress={() => navigation.navigate('Pacientes', { screen: 'CrearPaciente' })}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.success + '20' }]}>
-            <Ionicons name="person-add-outline" size={24} color={theme.colors.success} />
-          </View>
-          <View style={styles.actionContent}>
-            <Text style={[styles.actionTitle, { color: theme.colors.text }]}>
-              Nuevo Paciente
-            </Text>
-            <Text style={[styles.actionSubtitle, { color: theme.colors.textSecondary }]}>
-              Registrar nuevo paciente
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: theme.colors.card }]}
-          onPress={() => navigation.navigate('Citas', { screen: 'CitasDoctor' })}
-        >
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.info + '20' }]}>
-            <Ionicons name="calendar-outline" size={24} color={theme.colors.info} />
-          </View>
-          <View style={styles.actionContent}>
-            <Text style={[styles.actionTitle, { color: theme.colors.text }]}>
-              Mis Citas
-            </Text>
-            <Text style={[styles.actionSubtitle, { color: theme.colors.textSecondary }]}>
-              Gestionar citas médicas
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
+        ) : (
+          citasProximas.map((cita) => (
+            <TouchableOpacity
+              key={cita.id}
+              style={[styles.citaCard, { backgroundColor: theme.colors.card }]}
+              onPress={() =>
+                navigation.navigate("Pacientes", {
+                  screen: "FichaPaciente",
+                  params: { pacienteId: cita.paciente_id },
+                })
+              }
+            >
+              <View style={styles.citaHeader}>
+                <Text style={[styles.citaPaciente, { color: theme.colors.text }]}>
+                  {cita.paciente_nombre} {cita.paciente_apellido}
+                </Text>
+                <View style={[styles.estadoBadge, { backgroundColor: "#2196F320" }]}>
+                  <Text style={[styles.estadoText, { color: "#2196F3" }]}>
+                    {cita.estado}
+                  </Text>
+                </View>
+              </View>
+              <Text style={[styles.citaMotivo, { color: theme.colors.textSecondary }]}>
+                {cita.motivo}
+              </Text>
+              <View style={styles.citaFecha}>
+                <Ionicons name="calendar-outline" size={16} color={theme.colors.primary} />
+                <Text style={[styles.citaFechaText, { color: theme.colors.primary }]}>
+                  {formatearFecha(cita.fecha_hora)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </View>
+
+      <View style={{ height: 30 }} />
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    padding: 30,
-    paddingTop: 50,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  welcomeText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    opacity: 0.9,
-  },
-  nameText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginTop: 5,
-  },
-  especialidadText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    opacity: 0.8,
-    marginTop: 5,
-  },
-  logoutButton: {
-    padding: 8,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    padding: 15,
-    gap: 10,
-  },
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  header: { padding: 25, paddingTop: 40 },
+  greeting: { color: "#FFFFFF", fontSize: 24, fontWeight: "bold" },
+  specialty: { color: "#FFFFFF", fontSize: 16, opacity: 0.9, marginTop: 5 },
+  statsContainer: { flexDirection: "row", padding: 15, gap: 10 },
   statCard: {
     flex: 1,
-    padding: 20,
-    borderRadius: 15,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  statLabel: {
-    fontSize: 12,
-    marginTop: 5,
-    textAlign: 'center',
-  },
-  section: {
     padding: 15,
+    borderRadius: 15,
+    alignItems: "center",
+    elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
+  statIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  statValue: { fontSize: 24, fontWeight: "bold" },
+  statLabel: { fontSize: 12, marginTop: 4 },
+  section: { padding: 15 },
+  sectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
+  emptyCard: {
+    padding: 40,
+    borderRadius: 15,
+    alignItems: "center",
+    elevation: 2,
+  },
+  emptyText: { fontSize: 16, marginTop: 15 },
+  citaCard: {
     padding: 15,
     borderRadius: 15,
     marginBottom: 10,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
-  iconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
+  citaHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
   },
-  actionContent: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  actionSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
-  },
+  citaPaciente: { fontSize: 16, fontWeight: "600" },
+  estadoBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  estadoText: { fontSize: 12, fontWeight: "600", textTransform: "capitalize" },
+  citaMotivo: { fontSize: 14, marginBottom: 8 },
+  citaFecha: { flexDirection: "row", alignItems: "center", gap: 6 },
+  citaFechaText: { fontSize: 14, fontWeight: "500" },
 });
 
 export default HomeDoctorScreen;

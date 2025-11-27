@@ -1,222 +1,287 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Switch,
   TouchableOpacity,
+  Switch,
   Alert,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { usuariosAPI } from '../../api/usuarios';
+import { useAuth } from '../../context/AuthContext';
 
-const AjustesScreen = () => {
-  const { user, updateUser } = useAuth();
+const AjustesScreen = ({ navigation }) => {
   const { theme, isDarkMode, toggleTheme } = useTheme();
-  const [notificacionesActivas, setNotificacionesActivas] = useState(true);
+  const { user, logout } = useAuth();
 
-  const handleToggleModoOscuro = async () => {
-    try {
-      // Cambiar en la UI
-      toggleTheme();
-      
-      // Actualizar en el backend
-      await usuariosAPI.actualizarPerfil({
-        modo_oscuro: !isDarkMode,
-      });
-      
-      // Actualizar en el contexto
-      await updateUser({ modo_oscuro: !isDarkMode });
-    } catch (error) {
-      console.error('Error al cambiar modo oscuro:', error);
-      Alert.alert('Error', 'No se pudo cambiar el modo oscuro');
-    }
-  };
-
-  const handleToggleNotificaciones = () => {
-    setNotificacionesActivas(!notificacionesActivas);
-    // Aquí implementarías la lógica para activar/desactivar notificaciones
+  const handleLogout = () => {
     Alert.alert(
-      'Notificaciones',
-      notificacionesActivas 
-        ? 'Las notificaciones han sido desactivadas'
-        : 'Las notificaciones han sido activadas'
+      'Cerrar Sesión',
+      '¿Estás seguro de que deseas cerrar sesión?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              console.error('Error al cerrar sesión:', error);
+              Alert.alert('Error', 'No se pudo cerrar la sesión');
+            }
+          },
+        },
+      ]
     );
   };
 
-  return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+  const handleContactSupport = () => {
+    Alert.alert(
+      'Contactar Soporte',
+      '¿Cómo deseas contactarnos?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Email',
+          onPress: () => Linking.openURL('mailto:soporte@clinica.com'),
+        },
+        {
+          text: 'Teléfono',
+          onPress: () => Linking.openURL('tel:+524421234567'),
+        },
+      ]
+    );
+  };
+
+  const SettingItem = ({ icon, iconColor, title, subtitle, onPress, rightComponent }) => (
+    <TouchableOpacity
+      style={[styles.settingItem, { backgroundColor: theme.colors.card }]}
+      onPress={onPress}
+      disabled={!onPress && !rightComponent}
     >
+      <View style={[styles.settingIcon, { backgroundColor: (iconColor || theme.colors.primary) + '20' }]}>
+        <Ionicons name={icon} size={22} color={iconColor || theme.colors.primary} />
+      </View>
+      <View style={styles.settingContent}>
+        <Text style={[styles.settingTitle, { color: theme.colors.text }]}>
+          {title}
+        </Text>
+        {subtitle && (
+          <Text style={[styles.settingSubtitle, { color: theme.colors.textSecondary }]}>
+            {subtitle}
+          </Text>
+        )}
+      </View>
+      {rightComponent || (
+        onPress && <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+      )}
+    </TouchableOpacity>
+  );
+
+  return (
+    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Información del usuario */}
+      <View style={styles.userSection}>
+        <View style={[styles.avatar, { backgroundColor: theme.colors.primary + '20' }]}>
+          <Ionicons name="person" size={40} color={theme.colors.primary} />
+        </View>
+        <Text style={[styles.userName, { color: theme.colors.text }]}>
+          {user?.nombre} {user?.apellido}
+        </Text>
+        <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>
+          {user?.email}
+        </Text>
+      </View>
+
       {/* Apariencia */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Apariencia
+        <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+          APARIENCIA
         </Text>
         
-        <View style={[styles.settingCard, { backgroundColor: theme.colors.card }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingLeft}>
-              <Ionicons 
-                name={isDarkMode ? 'moon' : 'sunny'} 
-                size={24} 
-                color={theme.colors.primary} 
-              />
-              <View style={styles.settingText}>
-                <Text style={[styles.settingTitle, { color: theme.colors.text }]}>
-                  Modo Oscuro
-                </Text>
-                <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
-                  {isDarkMode ? 'Tema oscuro activado' : 'Tema claro activado'}
-                </Text>
-              </View>
-            </View>
+        <SettingItem
+          icon="moon-outline"
+          title="Modo Oscuro"
+          subtitle={isDarkMode ? 'Activado' : 'Desactivado'}
+          rightComponent={
             <Switch
               value={isDarkMode}
-              onValueChange={handleToggleModoOscuro}
+              onValueChange={toggleTheme}
               trackColor={{ false: '#767577', true: theme.colors.primary }}
               thumbColor="#FFFFFF"
             />
-          </View>
-        </View>
+          }
+        />
       </View>
 
       {/* Notificaciones */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Notificaciones
+        <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+          NOTIFICACIONES
         </Text>
         
-        <View style={[styles.settingCard, { backgroundColor: theme.colors.card }]}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingLeft}>
-              <Ionicons 
-                name="notifications-outline" 
-                size={24} 
-                color={theme.colors.primary} 
-              />
-              <View style={styles.settingText}>
-                <Text style={[styles.settingTitle, { color: theme.colors.text }]}>
-                  Notificaciones
-                </Text>
-                <Text style={[styles.settingDescription, { color: theme.colors.textSecondary }]}>
-                  Recordatorios de citas
-                </Text>
-              </View>
-            </View>
+        <SettingItem
+          icon="notifications-outline"
+          title="Notificaciones Push"
+          subtitle="Recibe recordatorios de citas"
+          rightComponent={
             <Switch
-              value={notificacionesActivas}
-              onValueChange={handleToggleNotificaciones}
+              value={true}
+              onValueChange={() => {
+                Alert.alert('Info', 'Las notificaciones están habilitadas por defecto');
+              }}
               trackColor={{ false: '#767577', true: theme.colors.primary }}
               thumbColor="#FFFFFF"
             />
-          </View>
-        </View>
+          }
+        />
+        
+        <SettingItem
+          icon="mail-outline"
+          title="Notificaciones por Email"
+          subtitle="Confirmaciones y recordatorios"
+          rightComponent={
+            <Switch
+              value={true}
+              onValueChange={() => {
+                Alert.alert('Info', 'Puedes configurar esto en tu perfil');
+              }}
+              trackColor={{ false: '#767577', true: theme.colors.primary }}
+              thumbColor="#FFFFFF"
+            />
+          }
+        />
       </View>
 
-      {/* Información de la cuenta */}
+      {/* Cuenta */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Cuenta
+        <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+          CUENTA
         </Text>
         
-        <View style={[styles.settingCard, { backgroundColor: theme.colors.card }]}>
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-              Email
-            </Text>
-            <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-              {user?.email}
-            </Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-              Tipo de usuario
-            </Text>
-            <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-              Paciente
-            </Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-              Email verificado
-            </Text>
-            <View style={styles.verifiedBadge}>
-              <Ionicons 
-                name={user?.email_verificado ? 'checkmark-circle' : 'close-circle'} 
-                size={16} 
-                color={user?.email_verificado ? theme.colors.success : theme.colors.danger} 
-              />
-              <Text style={[
-                styles.verifiedText,
-                { color: user?.email_verificado ? theme.colors.success : theme.colors.danger }
-              ]}>
-                {user?.email_verificado ? 'Verificado' : 'No verificado'}
-              </Text>
-            </View>
-          </View>
-        </View>
+        <SettingItem
+          icon="person-outline"
+          title="Editar Perfil"
+          subtitle="Actualiza tu información personal"
+          onPress={() => navigation.navigate('EditarPerfil', { 
+            paciente: {
+              id: user?.paciente_id || user?.id,
+              nombre: user?.nombre,
+              apellido: user?.apellido,
+              email: user?.email,
+              telefono: user?.telefono,
+            }
+          })}
+        />
+        
+        <SettingItem
+          icon="lock-closed-outline"
+          title="Cambiar Contraseña"
+          subtitle="Actualiza tu contraseña"
+          onPress={() => {
+            Alert.alert(
+              'Cambiar Contraseña',
+              'Esta función estará disponible próximamente',
+              [{ text: 'OK' }]
+            );
+          }}
+        />
+        
+        <SettingItem
+          icon="shield-checkmark-outline"
+          title="Privacidad"
+          subtitle="Configuración de privacidad"
+          onPress={() => {
+            Alert.alert(
+              'Privacidad',
+              'Tu información está protegida y solo es accesible por personal autorizado de la clínica.',
+              [{ text: 'OK' }]
+            );
+          }}
+        />
       </View>
 
-      {/* Ayuda y soporte */}
+      {/* Soporte */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Ayuda y Soporte
+        <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+          SOPORTE
         </Text>
         
-        <TouchableOpacity
-          style={[styles.optionButton, { backgroundColor: theme.colors.card }]}
-          onPress={() => Alert.alert('Ayuda', 'Próximamente disponible')}
-        >
-          <Ionicons name="help-circle-outline" size={24} color={theme.colors.primary} />
-          <Text style={[styles.optionText, { color: theme.colors.text }]}>
-            Centro de Ayuda
-          </Text>
-          <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.optionButton, { backgroundColor: theme.colors.card }]}
-          onPress={() => Alert.alert('Privacidad', 'Próximamente disponible')}
-        >
-          <Ionicons name="shield-checkmark-outline" size={24} color={theme.colors.primary} />
-          <Text style={[styles.optionText, { color: theme.colors.text }]}>
-            Política de Privacidad
-          </Text>
-          <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.optionButton, { backgroundColor: theme.colors.card }]}
-          onPress={() => Alert.alert('Términos', 'Próximamente disponible')}
-        >
-          <Ionicons name="document-text-outline" size={24} color={theme.colors.primary} />
-          <Text style={[styles.optionText, { color: theme.colors.text }]}>
-            Términos y Condiciones
-          </Text>
-          <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
+        <SettingItem
+          icon="help-circle-outline"
+          title="Centro de Ayuda"
+          subtitle="Preguntas frecuentes"
+          onPress={() => {
+            Alert.alert(
+              'Centro de Ayuda',
+              '¿Tienes alguna pregunta?\n\nPuedes contactarnos por:\n• Email: soporte@clinica.com\n• Teléfono: 442-123-4567',
+              [{ text: 'OK' }]
+            );
+          }}
+        />
+        
+        <SettingItem
+          icon="chatbubble-outline"
+          title="Contactar Soporte"
+          subtitle="Estamos para ayudarte"
+          onPress={handleContactSupport}
+        />
+        
+        <SettingItem
+          icon="star-outline"
+          iconColor="#FFD700"
+          title="Calificar App"
+          subtitle="Tu opinión es importante"
+          onPress={() => {
+            Alert.alert(
+              'Gracias',
+              '¡Gracias por usar nuestra aplicación! Tu feedback nos ayuda a mejorar.',
+              [{ text: 'OK' }]
+            );
+          }}
+        />
       </View>
 
-      {/* Información de la app */}
+      {/* Acerca de */}
       <View style={styles.section}>
-        <View style={[styles.versionCard, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.versionText, { color: theme.colors.textSecondary }]}>
-            Consultorio App v1.0.0
+        <Text style={[styles.sectionTitle, { color: theme.colors.textSecondary }]}>
+          ACERCA DE
+        </Text>
+        
+        <SettingItem
+          icon="information-circle-outline"
+          title="Versión de la App"
+          subtitle="1.0.0"
+        />
+        
+        <SettingItem
+          icon="document-text-outline"
+          title="Términos y Condiciones"
+          onPress={() => {
+            Alert.alert(
+              'Términos y Condiciones',
+              'Al usar esta aplicación, aceptas nuestros términos de servicio y política de privacidad.',
+              [{ text: 'OK' }]
+            );
+          }}
+        />
+      </View>
+
+      {/* Cerrar Sesión */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={[styles.logoutButton, { backgroundColor: theme.colors.danger + '15' }]}
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={24} color={theme.colors.danger} />
+          <Text style={[styles.logoutText, { color: theme.colors.danger }]}>
+            Cerrar Sesión
           </Text>
-          <Text style={[styles.versionText, { color: theme.colors.textSecondary }]}>
-            © 2025 Todos los derechos reservados
-          </Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <View style={{ height: 30 }} />
@@ -228,98 +293,74 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  userSection: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 14,
+  },
   section: {
-    padding: 20,
+    paddingHorizontal: 15,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 10,
+    marginLeft: 5,
+    letterSpacing: 0.5,
   },
-  settingCard: {
-    borderRadius: 15,
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderRadius: 12,
+    marginBottom: 8,
   },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  settingIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  settingText: {
-    marginLeft: 15,
+  settingContent: {
     flex: 1,
   },
   settingTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  settingDescription: {
-    fontSize: 14,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 8,
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  verifiedText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  optionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  optionText: {
-    flex: 1,
-    fontSize: 16,
     fontWeight: '500',
-    marginLeft: 15,
   },
-  versionCard: {
-    borderRadius: 10,
-    padding: 15,
+  settingSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  logoutButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 15,
+    borderRadius: 12,
+    gap: 10,
   },
-  versionText: {
-    fontSize: 12,
-    marginVertical: 2,
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

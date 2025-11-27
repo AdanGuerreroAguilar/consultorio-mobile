@@ -1,55 +1,62 @@
-import axios from 'axios';
+// api/client.js
+import axios from "axios";
+import { Platform } from "react-native";
 
-// ✅ IP ACTUALIZADA: 192.168.0.198
-const API_BASE_URL = "http://192.168.0.198:8000/api";
+// ============================================
+// 🔧 CONFIGURACIÓN - CAMBIA TU IP AQUÍ
+// ============================================
+const LOCAL_LAN_IP = "192.168.0.200"; // ← Cambia a tu IP local
+
+const getBaseURL = () => {
+  if (Platform.OS === "web") {
+    return "http://localhost:8000";
+  }
+  if (__DEV__) {
+    return `http://${LOCAL_LAN_IP}:8000`;
+  }
+  return "https://TU_DOMINIO.com";
+};
 
 const client = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getBaseURL(),
   timeout: 15000,
   headers: {
-    'Content-Type': 'application/json',
+    "Accept": "application/json",
+    "Content-Type": "application/json",
   },
 });
 
-// Interceptor para logging
+// Interceptor para logs
 client.interceptors.request.use(
   (config) => {
-    console.log(`📤 ${config.method.toUpperCase()} ${config.url}`);
+    console.log(`📤 ${config.method?.toUpperCase()} → ${config.baseURL}${config.url}`);
     return config;
   },
-  (error) => {
-    console.error('❌ Error en request:', error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 client.interceptors.response.use(
   (response) => {
-    console.log(`✅ Respuesta exitosa de ${response.config.url}`);
+    console.log(`✅ ${response.status} ← ${response.config.url}`);
     return response;
   },
   (error) => {
     if (error.response) {
-      console.error('❌ Error API:', {
-        url: error.config.url,
-        status: error.response.status,
-        message: error.response.data.detail || error.response.data.message || 'Error desconocido',
-      });
-    } else if (error.request) {
-      console.error('❌ Error de red:', error.message);
+      console.log(`❌ ERROR ${error.response.status}:`, error.response.data);
+    } else {
+      console.log("❌ ERROR DE RED:", error.message);
     }
     return Promise.reject(error);
   }
 );
 
-// Función para establecer el token de autenticación
 export const setAuthToken = (token) => {
   if (token) {
-    client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    console.log('🔑 Token configurado');
+    client.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    console.log("🔑 Token configurado");
   } else {
-    delete client.defaults.headers.common['Authorization'];
-    console.log('🔓 Token eliminado');
+    delete client.defaults.headers.common["Authorization"];
+    console.log("🔓 Token eliminado");
   }
 };
 

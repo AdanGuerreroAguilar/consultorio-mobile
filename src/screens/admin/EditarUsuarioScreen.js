@@ -1,129 +1,103 @@
 // screens/admin/EditarUsuarioScreen.js
-
 import React, { useState } from "react";
 import {
   View,
   Text,
+  StyleSheet,
   ScrollView,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
-import apiClient from "../../api/client";
-
-const roles = ["admin", "doctor", "paciente"];
+import client from "../../api/client";
 
 const EditarUsuarioScreen = ({ route, navigation }) => {
-  const { theme } = useTheme();
   const { usuario } = route.params;
-
-  const [nombre, setNombre] = useState(usuario.nombre);
-  const [apellido, setApellido] = useState(usuario.apellido);
-  const [email, setEmail] = useState(usuario.email);
-  const [rol, setRol] = useState(usuario.rol);
-  const [password, setPassword] = useState("");
-
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
 
-  // ============================================================
-  // VALIDACIONES
-  // ============================================================
-  const validar = () => {
-    if (!nombre.trim()) return "El nombre es obligatorio";
-    if (!apellido.trim()) return "El apellido es obligatorio";
+  const [nombre, setNombre] = useState(usuario?.nombre || "");
+  const [apellido, setApellido] = useState(usuario?.apellido || "");
+  const [telefono, setTelefono] = useState(usuario?.telefono || "");
+  const [especialidad, setEspecialidad] = useState(usuario?.especialidad || "");
 
-    if (!email.trim()) return "El email es obligatorio";
-    if (!email.includes("@")) return "El correo no es válido";
+  const getRolColor = () => {
+    switch (usuario?.rol) {
+      case "admin": return "#9C27B0";
+      case "doctor": return "#4CAF50";
+      default: return "#2196F3";
+    }
+  };
 
-    if (!rol) return "Selecciona un rol";
-
-    if (password.length > 0 && password.length < 6) {
-      return "La nueva contraseña debe tener al menos 6 caracteres";
+  // ✅ GUARDAR CAMBIOS - FUNCIONAL
+  const handleGuardar = async () => {
+    if (!nombre.trim() || !apellido.trim()) {
+      Alert.alert("Error", "Nombre y apellido son obligatorios");
+      return;
     }
 
-    return null;
-  };
-
-  // ============================================================
-  // GUARDAR CAMBIOS (con confirmación)
-  // ============================================================
-  const handleGuardar = () => {
-    const error = validar();
-    if (error) return Alert.alert("Error", error);
-
-    Alert.alert(
-      "Confirmación",
-      "¿Guardar cambios del usuario?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Guardar",
-          onPress: () => actualizarUsuario(),
-        },
-      ]
-    );
-  };
-
-  const actualizarUsuario = async () => {
     setLoading(true);
+
     try {
       const datos = {
         nombre: nombre.trim(),
         apellido: apellido.trim(),
-        email: email.toLowerCase().trim(),
-        rol,
+        telefono: telefono.trim() || null,
+        especialidad: especialidad.trim() || null,
       };
 
-      // Agregar contraseña solo si se cambió
-      if (password.trim()) {
-        datos.password = password.trim();
-      }
+      console.log("📝 Actualizando usuario:", usuario.id, datos);
+      
+      await client.put(`/api/usuarios/${usuario.id}`, datos);
 
-      await apiClient.put(`/usuarios/${usuario.id}`, datos);
-
-      Alert.alert("Éxito", "Cambios guardados", [
+      Alert.alert("Éxito", "Usuario actualizado correctamente", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      console.error("Error actualizando usuario:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.detail || "No se pudieron guardar los cambios"
-      );
+      console.error("❌ Error:", error.response?.data || error.message);
+      Alert.alert("Error", error.response?.data?.detail || "No se pudo actualizar");
     } finally {
       setLoading(false);
     }
   };
 
-  // ============================================================
-  // UI
-  // ============================================================
   return (
     <ScrollView
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background },
-      ]}
-      showsVerticalScrollIndicator={false}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      contentContainerStyle={styles.content}
     >
-      <View style={styles.content}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={[styles.avatar, { backgroundColor: getRolColor() + "20" }]}>
+          <Ionicons
+            name={usuario?.rol === "doctor" ? "medical" : "shield"}
+            size={40}
+            color={getRolColor()}
+          />
+        </View>
+        <View style={[styles.rolBadge, { backgroundColor: getRolColor() + "20" }]}>
+          <Text style={[styles.rolText, { color: getRolColor() }]}>
+            {usuario?.rol?.toUpperCase()}
+          </Text>
+        </View>
+        <Text style={[styles.email, { color: theme.colors.textSecondary }]}>
+          {usuario?.email}
+        </Text>
+      </View>
+
+      {/* Formulario */}
+      <View style={[styles.section, { backgroundColor: theme.colors.card }]}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Editar Usuario
+          Información Personal
         </Text>
 
-        {/* Nombre */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Nombre *</Text>
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Nombre *</Text>
           <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
+            style={[styles.input, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
             value={nombre}
             onChangeText={setNombre}
             placeholder="Nombre"
@@ -131,14 +105,10 @@ const EditarUsuarioScreen = ({ route, navigation }) => {
           />
         </View>
 
-        {/* Apellido */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Apellido *</Text>
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Apellido *</Text>
           <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
+            style={[styles.input, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
             value={apellido}
             onChangeText={setApellido}
             placeholder="Apellido"
@@ -146,135 +116,101 @@ const EditarUsuarioScreen = ({ route, navigation }) => {
           />
         </View>
 
-        {/* Email */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Email *</Text>
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Teléfono</Text>
           <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="correo@ejemplo.com"
+            style={[styles.input, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
+            value={telefono}
+            onChangeText={setTelefono}
+            placeholder="Teléfono"
             placeholderTextColor={theme.colors.textSecondary}
-            keyboardType="email-address"
-            autoCapitalize="none"
+            keyboardType="phone-pad"
           />
         </View>
 
-        {/* Rol */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Rol *</Text>
-          <View
-            style={[
-              styles.pickerContainer,
-              { backgroundColor: theme.colors.card },
-            ]}
-          >
-            <Picker
-              selectedValue={rol}
-              onValueChange={(value) => setRol(value)}
-              style={{ color: theme.colors.text }}
-            >
-              <Picker.Item label="Seleccionar rol..." value="" />
-              {roles.map((r) => (
-                <Picker.Item key={r} label={r.toUpperCase()} value={r} />
-              ))}
-            </Picker>
+        {usuario?.rol === "doctor" && (
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Especialidad</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
+              value={especialidad}
+              onChangeText={setEspecialidad}
+              placeholder="Especialidad médica"
+              placeholderTextColor={theme.colors.textSecondary}
+            />
           </View>
-        </View>
-
-        {/* Contraseña */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            Nueva Contraseña (opcional)
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Dejar en blanco para no cambiar"
-            placeholderTextColor={theme.colors.textSecondary}
-            secureTextEntry
-          />
-        </View>
-
-        {/* Botón Guardar */}
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            { backgroundColor: theme.colors.primary },
-            loading && styles.buttonDisabled,
-          ]}
-          onPress={handleGuardar}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <>
-              <Ionicons name="save-outline" size={22} color="#FFF" />
-              <Text style={styles.saveButtonText}>Guardar Cambios</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        )}
       </View>
+
+      {/* Botones */}
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: theme.colors.primary }, loading && { opacity: 0.6 }]}
+        onPress={handleGuardar}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="save-outline" size={20} color="#fff" />
+            <Text style={styles.buttonText}>Guardar Cambios</Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.cancelButton, { borderColor: theme.colors.border }]}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>Cancelar</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 };
 
-export default EditarUsuarioScreen;
-
-// ============================================================
-// ESTILOS
-// ============================================================
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20 },
-
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 15,
-  },
-
-  inputGroup: { marginBottom: 15 },
-
-  label: {
-    fontSize: 14,
-    marginBottom: 6,
-    fontWeight: "600",
-  },
-
-  input: {
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-  },
-
-  pickerContainer: {
-    borderRadius: 12,
-  },
-
-  saveButton: {
-    flexDirection: "row",
-    padding: 16,
-    borderRadius: 12,
+  header: { alignItems: "center", marginBottom: 25 },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 20,
-    gap: 10,
+    marginBottom: 12,
   },
-
-  saveButtonText: {
+  rolBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 15, marginBottom: 8 },
+  rolText: { fontSize: 12, fontWeight: "700" },
+  email: { fontSize: 14 },
+  section: { borderRadius: 15, padding: 20, marginBottom: 20 },
+  sectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 20 },
+  field: { marginBottom: 18 },
+  label: { fontSize: 12, marginBottom: 6 },
+  input: {
+    padding: 14,
+    borderRadius: 10,
     fontSize: 16,
-    fontWeight: "600",
-    color: "#fff",
+    borderWidth: 1,
   },
-
-  buttonDisabled: { opacity: 0.6 },
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  cancelButton: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 30,
+  },
+  cancelButtonText: { fontSize: 16, fontWeight: "600" },
 });
+
+export default EditarUsuarioScreen;

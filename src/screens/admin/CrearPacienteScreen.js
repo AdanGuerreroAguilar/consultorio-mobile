@@ -35,7 +35,7 @@ const CrearPacienteScreen = ({ navigation }) => {
   const [telefono, setTelefono] = useState('');
 
   const [fechaNacimiento, setFechaNacimiento] = useState(new Date(2000, 0, 1));
-  const [fechaTexto, setFechaTexto] = useState('2000-01-01'); // para WEB
+  const [fechaTexto, setFechaTexto] = useState('2000-01-01');
 
   const [genero, setGenero] = useState('');
   const [tipoSangre, setTipoSangre] = useState('');
@@ -72,9 +72,7 @@ const CrearPacienteScreen = ({ navigation }) => {
   const validar = () => {
     if (!nombre.trim()) return "El nombre es obligatorio";
     if (!apellido.trim()) return "El apellido es obligatorio";
-
     if (email && !email.includes('@')) return "El email no es válido";
-
     return null;
   };
 
@@ -87,7 +85,7 @@ const CrearPacienteScreen = ({ navigation }) => {
 
     Alert.alert(
       "Confirmación",
-      "¿Registrar este paciente?",
+      `¿Registrar a ${nombre} ${apellido} como paciente?`,
       [
         { text: "Cancelar", style: "cancel" },
         { text: "Confirmar", onPress: () => crearPaciente() }
@@ -104,12 +102,7 @@ const CrearPacienteScreen = ({ navigation }) => {
         apellido: apellido.trim(),
         email: email.trim() || null,
         telefono: telefono.trim() || null,
-
-        fecha_nacimiento:
-          Platform.OS === "web"
-            ? fechaTexto
-            : formatDate(fechaNacimiento),
-
+        fecha_nacimiento: Platform.OS === "web" ? fechaTexto : formatDate(fechaNacimiento),
         genero: genero || null,
         tipo_sangre: tipoSangre || null,
         direccion: direccion.trim() || null,
@@ -118,8 +111,8 @@ const CrearPacienteScreen = ({ navigation }) => {
         telefono_emergencia: telefonoEmergencia.trim() || null,
       };
 
-      // Enviar al backend
-      await apiClient.post("/pacientes", datos);
+      // ✅ CORREGIDO: Ruta con /api/
+      await apiClient.post("/api/pacientes", datos);
 
       Alert.alert("Éxito", "Paciente creado correctamente", [
         { text: "OK", onPress: () => navigation.goBack() }
@@ -177,9 +170,8 @@ const CrearPacienteScreen = ({ navigation }) => {
 
         {/* Fecha de nacimiento */}
         <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Fecha de nacimiento *</Text>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Fecha de nacimiento</Text>
 
-          {/* WEB */}
           {Platform.OS === "web" ? (
             <TextInput
               style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
@@ -258,6 +250,7 @@ const CrearPacienteScreen = ({ navigation }) => {
             placeholder="correo@ejemplo.com"
             placeholderTextColor={theme.colors.textSecondary}
             keyboardType="email-address"
+            autoCapitalize="none"
           />
         </View>
 
@@ -273,7 +266,6 @@ const CrearPacienteScreen = ({ navigation }) => {
           />
         </View>
 
-        {/* Dirección */}
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Dirección</Text>
           <TextInput
@@ -305,7 +297,7 @@ const CrearPacienteScreen = ({ navigation }) => {
 
         {/* Contacto Emergencia */}
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Contacto de emergencia
+          Contacto de Emergencia
         </Text>
 
         <View style={styles.inputGroup}>
@@ -350,7 +342,6 @@ const CrearPacienteScreen = ({ navigation }) => {
             </>
           )}
         </TouchableOpacity>
-
       </View>
     </ScrollView>
   );
@@ -372,7 +363,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
 
   input: { borderRadius: 12, padding: 15, fontSize: 16 },
-  textArea: { height: 80, textAlignVertical: "top" },
+  textArea: { minHeight: 80, textAlignVertical: "top" },
 
   pickerContainer: { borderRadius: 12, overflow: "hidden" },
 

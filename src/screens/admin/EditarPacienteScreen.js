@@ -1,507 +1,310 @@
 // screens/admin/EditarPacienteScreen.js
-
 import React, { useState } from "react";
 import {
   View,
   Text,
+  StyleSheet,
   ScrollView,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Alert,
   ActivityIndicator,
-  Platform,
 } from "react-native";
-
-import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
-import apiClient from "../../api/client";
+import client from "../../api/client";
 
-const TIPOS_SANGRE = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
-const GENEROS = ["Masculino", "Femenino", "Otro"];
+const TIPOS_SANGRE = ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+const GENEROS = [
+  { label: "Seleccionar...", value: "" },
+  { label: "Masculino", value: "Masculino" },
+  { label: "Femenino", value: "Femenino" },
+  { label: "Otro", value: "Otro" },
+];
 
 const EditarPacienteScreen = ({ route, navigation }) => {
-  const { theme } = useTheme();
   const { paciente } = route.params;
-
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Datos iniciales del paciente
-  const [nombre, setNombre] = useState(paciente.nombre);
-  const [apellido, setApellido] = useState(paciente.apellido);
-  const [email, setEmail] = useState(paciente.email || "");
-  const [telefono, setTelefono] = useState(paciente.telefono || "");
+  const [formData, setFormData] = useState({
+    nombre: paciente?.nombre || "",
+    apellido: paciente?.apellido || "",
+    fecha_nacimiento: paciente?.fecha_nacimiento || "",
+    genero: paciente?.genero || "",
+    email: paciente?.email || "",
+    telefono: paciente?.telefono || "",
+    direccion: paciente?.direccion || "",
+    tipo_sangre: paciente?.tipo_sangre || "",
+    alergias: paciente?.alergias || "",
+    contacto_emergencia: paciente?.contacto_emergencia || "",
+    telefono_emergencia: paciente?.telefono_emergencia || "",
+  });
 
-  const fechaInicial = paciente.fecha_nacimiento
-    ? new Date(paciente.fecha_nacimiento)
-    : new Date(2000, 0, 1);
-
-  const [fechaNacimiento, setFechaNacimiento] = useState(fechaInicial);
-  const [fechaTexto, setFechaTexto] = useState(
-    paciente.fecha_nacimiento || "2000-01-01"
-  );
-
-  const [genero, setGenero] = useState(paciente.genero || "");
-  const [tipoSangre, setTipoSangre] = useState(paciente.tipo_sangre || "");
-  const [direccion, setDireccion] = useState(paciente.direccion || "");
-  const [alergias, setAlergias] = useState(paciente.alergias || "");
-  const [contactoEmergencia, setContactoEmergencia] = useState(
-    paciente.contacto_emergencia || ""
-  );
-  const [telefonoEmergencia, setTelefonoEmergencia] = useState(
-    paciente.telefono_emergencia || ""
-  );
-
-  // ==========================================
-  // FORMATEAR FECHA CORRECTAMENTE
-  // ==========================================
-  const formatDate = (date) => {
-    if (!(date instanceof Date) || isNaN(date)) return null;
-
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
+  const handleChange = (field, value) => {
+    setFormData({ ...formData, [field]: value });
   };
 
-  // ==========================================
-  // EVENTO FECHA EN MOVIL
-  // ==========================================
-  const onDateChange = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === "ios");
-    if (selectedDate) {
-      setFechaNacimiento(selectedDate);
-      setFechaTexto(formatDate(selectedDate));
+  // ✅ GUARDAR CAMBIOS - FUNCIONAL
+  const handleGuardar = async () => {
+    if (!formData.nombre.trim() || !formData.apellido.trim()) {
+      Alert.alert("Error", "Nombre y apellido son obligatorios");
+      return;
     }
-  };
 
-  // ==========================================
-  // VALIDACIONES
-  // ==========================================
-  const validar = () => {
-    if (!nombre.trim()) return "El nombre es obligatorio";
-    if (!apellido.trim()) return "El apellido es obligatorio";
-    if (email && !email.includes("@")) return "El email no es válido";
-    return null;
-  };
-
-  // ==========================================
-  // GUARDAR CAMBIOS
-  // ==========================================
-  const handleGuardar = () => {
-    const error = validar();
-    if (error) return Alert.alert("Error", error);
-
-    Alert.alert(
-      "Confirmación",
-      "¿Guardar cambios de este paciente?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Guardar", onPress: () => actualizarPaciente() },
-      ]
-    );
-  };
-
-  const actualizarPaciente = async () => {
     setLoading(true);
 
     try {
       const datos = {
-        nombre: nombre.trim(),
-        apellido: apellido.trim(),
-        email: email.trim() || null,
-        telefono: telefono.trim() || null,
-
-        fecha_nacimiento:
-          Platform.OS === "web" ? fechaTexto : formatDate(fechaNacimiento),
-
-        genero: genero || null,
-        tipo_sangre: tipoSangre || null,
-        direccion: direccion.trim() || null,
-        alergias: alergias.trim() || null,
-        contacto_emergencia: contactoEmergencia.trim() || null,
-        telefono_emergencia: telefonoEmergencia.trim() || null,
+        nombre: formData.nombre.trim(),
+        apellido: formData.apellido.trim(),
+        fecha_nacimiento: formData.fecha_nacimiento || null,
+        genero: formData.genero || null,
+        email: formData.email.trim() || null,
+        telefono: formData.telefono.trim() || null,
+        direccion: formData.direccion.trim() || null,
+        tipo_sangre: formData.tipo_sangre || null,
+        alergias: formData.alergias.trim() || null,
+        contacto_emergencia: formData.contacto_emergencia.trim() || null,
+        telefono_emergencia: formData.telefono_emergencia.trim() || null,
       };
 
-      await apiClient.put(`/pacientes/${paciente.id}`, datos);
+      console.log("📝 Actualizando paciente:", paciente.id, datos);
+      
+      await client.put(`/api/pacientes/${paciente.id}`, datos);
 
-      Alert.alert("Éxito", "Cambios guardados", [
+      Alert.alert("Éxito", "Paciente actualizado correctamente", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      console.error("Error actualizando paciente:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.detail || "No se pudieron guardar los cambios"
-      );
+      console.error("❌ Error:", error.response?.data || error.message);
+      Alert.alert("Error", error.response?.data?.detail || "No se pudo actualizar");
     } finally {
       setLoading(false);
     }
   };
 
-  // ==========================================
-  // UI
-  // ==========================================
   return (
     <ScrollView
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background },
-      ]}
-      showsVerticalScrollIndicator={false}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      contentContainerStyle={styles.content}
     >
-      <View style={styles.content}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Editar Paciente
-        </Text>
+      {/* Información Personal */}
+      <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+        Información Personal
+      </Text>
 
-        {/* ================== NOMBRE Y APELLIDO ==================*/}
-
-        <View style={styles.row}>
-          {/* Nombre */}
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Nombre *
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: theme.colors.card, color: theme.colors.text },
-              ]}
-              value={nombre}
-              onChangeText={setNombre}
-              placeholder="Nombre"
-              placeholderTextColor={theme.colors.textSecondary}
-            />
-          </View>
-
-          {/* Apellido */}
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Apellido *
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: theme.colors.card, color: theme.colors.text },
-              ]}
-              value={apellido}
-              onChangeText={setApellido}
-              placeholder="Apellido"
-              placeholderTextColor={theme.colors.textSecondary}
-            />
-          </View>
-        </View>
-
-        {/* ================== FECHA ==================*/}
-
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            Fecha de nacimiento *
-          </Text>
-
-          {/* WEB */}
-          {Platform.OS === "web" ? (
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: theme.colors.card, color: theme.colors.text },
-              ]}
-              value={fechaTexto}
-              onChangeText={(txt) => {
-                setFechaTexto(txt);
-                const parts = txt.split("-");
-                if (parts.length === 3) {
-                  setFechaNacimiento(new Date(parts[0], parts[1] - 1, parts[2]));
-                }
-              }}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={theme.colors.textSecondary}
-            />
-          ) : (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.dateButton,
-                  { backgroundColor: theme.colors.card },
-                ]}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Ionicons
-                  name="calendar-outline"
-                  size={20}
-                  color={theme.colors.primary}
-                />
-                <Text
-                  style={[styles.dateText, { color: theme.colors.text }]}
-                >
-                  {formatDate(fechaNacimiento)}
-                </Text>
-              </TouchableOpacity>
-
-              {showDatePicker && (
-                <DateTimePicker
-                  value={fechaNacimiento}
-                  mode="date"
-                  display="default"
-                  onChange={onDateChange}
-                  maximumDate={new Date()}
-                />
-              )}
-            </>
-          )}
-        </View>
-
-        {/* ================== GÉNERO Y TIPO DE SANGRE ==================*/}
-
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Género
-            </Text>
-            <View
-              style={[
-                styles.pickerContainer,
-                { backgroundColor: theme.colors.card },
-              ]}
-            >
-              <Picker
-                selectedValue={genero}
-                onValueChange={setGenero}
-                style={{ color: theme.colors.text }}
-              >
-                <Picker.Item label="Seleccionar..." value="" />
-                {GENEROS.map((g) => (
-                  <Picker.Item key={g} label={g} value={g} />
-                ))}
-              </Picker>
-            </View>
-          </View>
-
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Tipo de Sangre
-            </Text>
-            <View
-              style={[
-                styles.pickerContainer,
-                { backgroundColor: theme.colors.card },
-              ]}
-            >
-              <Picker
-                selectedValue={tipoSangre}
-                onValueChange={setTipoSangre}
-                style={{ color: theme.colors.text }}
-              >
-                <Picker.Item label="Seleccionar..." value="" />
-                {TIPOS_SANGRE.map((t) => (
-                  <Picker.Item key={t} label={t} value={t} />
-                ))}
-              </Picker>
-            </View>
-          </View>
-        </View>
-
-        {/* ================== CONTACTO ==================*/}
-
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Contacto
-        </Text>
-
-        {/* Email */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            Email
-          </Text>
+      <View style={styles.row}>
+        <View style={[styles.field, { flex: 1 }]}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Nombre *</Text>
           <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="correo@ejemplo.com"
-            placeholderTextColor={theme.colors.textSecondary}
-            keyboardType="email-address"
-          />
-        </View>
-
-        {/* Teléfono */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            Teléfono
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
-            value={telefono}
-            onChangeText={setTelefono}
-            placeholder="442-123-4567"
-            placeholderTextColor={theme.colors.textSecondary}
-            keyboardType="phone-pad"
-          />
-        </View>
-
-        {/* ================== DIRECCIÓN ==================*/}
-
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            Dirección
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              styles.textArea,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
-            value={direccion}
-            onChangeText={setDireccion}
-            placeholder="Calle, número, colonia, ciudad..."
-            placeholderTextColor={theme.colors.textSecondary}
-            multiline
-          />
-        </View>
-
-        {/* ================== INFORMACIÓN MÉDICA ==================*/}
-
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Información Médica
-        </Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            Alergias
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              styles.textArea,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
-            value={alergias}
-            onChangeText={setAlergias}
-            placeholder="Alergias conocidas..."
-            placeholderTextColor={theme.colors.textSecondary}
-            multiline
-          />
-        </View>
-
-        {/* ================== EMERGENCIA ==================*/}
-
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-          Contacto de emergencia
-        </Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            Nombre del contacto
-          </Text>
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
-            value={contactoEmergencia}
-            onChangeText={setContactoEmergencia}
-            placeholder="Juan Pérez"
+            style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+            value={formData.nombre}
+            onChangeText={(v) => handleChange("nombre", v)}
+            placeholder="Nombre"
             placeholderTextColor={theme.colors.textSecondary}
           />
         </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            Teléfono del contacto
-          </Text>
+        <View style={[styles.field, { flex: 1 }]}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Apellido *</Text>
           <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text },
-            ]}
-            value={telefonoEmergencia}
-            onChangeText={setTelefonoEmergencia}
-            placeholder="442-098-7654"
+            style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+            value={formData.apellido}
+            onChangeText={(v) => handleChange("apellido", v)}
+            placeholder="Apellido"
             placeholderTextColor={theme.colors.textSecondary}
-            keyboardType="phone-pad"
           />
         </View>
-
-        {/* ================== BOTÓN GUARDAR ==================*/}
-
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            { backgroundColor: theme.colors.primary },
-            loading && styles.buttonDisabled,
-          ]}
-          onPress={handleGuardar}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="save-outline" size={22} color="#fff" />
-              <Text style={styles.saveButtonText}>Guardar Cambios</Text>
-            </>
-          )}
-        </TouchableOpacity>
       </View>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>
+          Fecha de Nacimiento (YYYY-MM-DD)
+        </Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+          value={formData.fecha_nacimiento}
+          onChangeText={(v) => handleChange("fecha_nacimiento", v)}
+          placeholder="1990-01-15"
+          placeholderTextColor={theme.colors.textSecondary}
+        />
+      </View>
+
+      <View style={styles.row}>
+        <View style={[styles.field, { flex: 1 }]}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Género</Text>
+          <View style={[styles.pickerContainer, { backgroundColor: theme.colors.card }]}>
+            <Picker
+              selectedValue={formData.genero}
+              onValueChange={(v) => handleChange("genero", v)}
+              style={{ color: theme.colors.text }}
+            >
+              {GENEROS.map((g) => (
+                <Picker.Item key={g.value} label={g.label} value={g.value} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+        <View style={[styles.field, { flex: 1 }]}>
+          <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Tipo Sangre</Text>
+          <View style={[styles.pickerContainer, { backgroundColor: theme.colors.card }]}>
+            <Picker
+              selectedValue={formData.tipo_sangre}
+              onValueChange={(v) => handleChange("tipo_sangre", v)}
+              style={{ color: theme.colors.text }}
+            >
+              {TIPOS_SANGRE.map((t) => (
+                <Picker.Item key={t} label={t || "Seleccionar"} value={t} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+      </View>
+
+      {/* Contacto */}
+      <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 20 }]}>
+        Contacto
+      </Text>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Email</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+          value={formData.email}
+          onChangeText={(v) => handleChange("email", v)}
+          placeholder="correo@ejemplo.com"
+          placeholderTextColor={theme.colors.textSecondary}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Teléfono</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+          value={formData.telefono}
+          onChangeText={(v) => handleChange("telefono", v)}
+          placeholder="442-123-4567"
+          placeholderTextColor={theme.colors.textSecondary}
+          keyboardType="phone-pad"
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Dirección</Text>
+        <TextInput
+          style={[styles.textArea, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+          value={formData.direccion}
+          onChangeText={(v) => handleChange("direccion", v)}
+          placeholder="Calle, número, colonia..."
+          placeholderTextColor={theme.colors.textSecondary}
+          multiline
+        />
+      </View>
+
+      {/* Información Médica */}
+      <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 20 }]}>
+        Información Médica
+      </Text>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Alergias</Text>
+        <TextInput
+          style={[styles.textArea, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+          value={formData.alergias}
+          onChangeText={(v) => handleChange("alergias", v)}
+          placeholder="Alergias conocidas..."
+          placeholderTextColor={theme.colors.textSecondary}
+          multiline
+        />
+      </View>
+
+      {/* Contacto de Emergencia */}
+      <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 20 }]}>
+        Contacto de Emergencia
+      </Text>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Nombre</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+          value={formData.contacto_emergencia}
+          onChangeText={(v) => handleChange("contacto_emergencia", v)}
+          placeholder="Nombre del contacto"
+          placeholderTextColor={theme.colors.textSecondary}
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.textSecondary }]}>Teléfono</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+          value={formData.telefono_emergencia}
+          onChangeText={(v) => handleChange("telefono_emergencia", v)}
+          placeholder="Teléfono de emergencia"
+          placeholderTextColor={theme.colors.textSecondary}
+          keyboardType="phone-pad"
+        />
+      </View>
+
+      {/* Botones */}
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: theme.colors.primary }, loading && { opacity: 0.6 }]}
+        onPress={handleGuardar}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="save-outline" size={20} color="#fff" />
+            <Text style={styles.buttonText}>Guardar Cambios</Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.cancelButton, { borderColor: theme.colors.border }]}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>Cancelar</Text>
+      </TouchableOpacity>
+
+      <View style={{ height: 30 }} />
     </ScrollView>
   );
 };
 
-export default EditarPacienteScreen;
-
-// ===================================================
-// ESTILOS
-// ===================================================
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20 },
-
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 15,
-    marginTop: 10,
-  },
-
-  inputGroup: { marginBottom: 15 },
-  label: { fontSize: 14, marginBottom: 6, fontWeight: "600" },
-
-  input: { borderRadius: 12, padding: 14, fontSize: 16 },
-  textArea: { height: 80, textAlignVertical: "top" },
-
+  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 15 },
   row: { flexDirection: "row", gap: 12 },
-
-  pickerContainer: { borderRadius: 12 },
-
-  dateButton: {
+  field: { marginBottom: 16 },
+  label: { fontSize: 12, marginBottom: 6 },
+  input: { padding: 14, borderRadius: 10, fontSize: 16 },
+  textArea: { padding: 14, borderRadius: 10, fontSize: 16, minHeight: 80, textAlignVertical: "top" },
+  pickerContainer: { borderRadius: 10, overflow: "hidden" },
+  button: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 15,
-    borderRadius: 12,
-    gap: 10,
-  },
-  dateText: { fontSize: 16 },
-
-  saveButton: {
-    flexDirection: "row",
+    justifyContent: "center",
     padding: 16,
     borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
+    gap: 8,
     marginTop: 20,
-    marginBottom: 40,
-    gap: 10,
   },
-
-  saveButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  buttonDisabled: { opacity: 0.6 },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  cancelButton: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  cancelButtonText: { fontSize: 16, fontWeight: "600" },
 });
+
+export default EditarPacienteScreen;

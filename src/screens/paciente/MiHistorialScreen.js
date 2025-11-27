@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import apiClient from '../../api/client';
+import client from '../../api/client';
 
 const MiHistorialScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -25,52 +25,68 @@ const MiHistorialScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       cargarHistorial();
-    }, [filtro])
+    }, [filtro, user])
   );
 
   const cargarHistorial = async () => {
     setLoading(true);
     try {
-      console.log('📋 Cargando historial para paciente:', user?.paciente_id);
+      // Obtener el ID del paciente
+      const pacienteId = user?.paciente_id || user?.id;
+      console.log('📋 Cargando historial para paciente:', pacienteId);
 
-      if (!user?.paciente_id) {
+      if (!pacienteId) {
         console.warn('⚠️ No se encontró paciente_id');
         setHistorial([]);
         return;
       }
 
-      // Intentar cargar desde el endpoint de historial
       let historialData = [];
       
+      // Intentar cargar desde el endpoint de historial
       try {
-        // Primero intenta el endpoint específico de historial
-        const response = await apiClient.get(`/pacientes/${user.paciente_id}/historial`);
+        const response = await client.get(`/pacientes/${pacienteId}/historial`);
         historialData = Array.isArray(response.data) ? response.data : [];
+        console.log('✅ Historial cargado desde endpoint:', historialData.length);
       } catch (error) {
-        console.log('Endpoint de historial no disponible, cargando citas completadas...');
+        console.log('ℹ️ Endpoint de historial no disponible, cargando citas completadas...');
         
         // Fallback: cargar citas completadas como historial
         try {
-          const citasResponse = await apiClient.get('/citas');
-          const todasCitas = Array.isArray(citasResponse.data) ? citasResponse.data : [];
+          const citasResponse = await client.get('/citas');
+          let todasCitas = [];
           
-          // Filtrar citas completadas del paciente
+          if (Array.isArray(citasResponse.data)) {
+            todasCitas = citasResponse.data;
+          } else if (citasResponse.data?.data) {
+            todasCitas = citasResponse.data.data;
+          }
+          
+          // Filtrar citas completadas/pasadas del paciente
           historialData = todasCitas
-            .filter(cita => 
-              cita.paciente_id === user.paciente_id && 
-              (cita.estado === 'completada' || new Date(cita.fecha_hora) < new Date())
-            )
+            .filter(cita => {
+              const esMiCita = cita.paciente_id === pacienteId || 
+                              cita.paciente_id === parseInt(pacienteId) ||
+                              cita.usuario_id === user?.id;
+              const esCompletada = cita.estado === 'completada' || 
+                                  new Date(cita.fecha_hora) < new Date();
+              return esMiCita && esCompletada;
+            })
             .map(cita => ({
               id: cita.id,
               tipo: 'consulta',
               fecha: cita.fecha_hora,
               titulo: cita.motivo || 'Consulta médica',
               descripcion: cita.notas || cita.diagnostico || 'Sin detalles adicionales',
-              doctor: cita.doctor_nombre ? `Dr. ${cita.doctor_nombre} ${cita.doctor_apellido || ''}` : 'Doctor asignado',
+              doctor: cita.doctor_nombre 
+                ? `Dr. ${cita.doctor_nombre} ${cita.doctor_apellido || ''}` 
+                : 'Doctor asignado',
               estado: cita.estado,
             }));
+            
+          console.log('✅ Historial cargado desde citas:', historialData.length);
         } catch (citasError) {
-          console.error('Error al cargar citas:', citasError);
+          console.error('❌ Error al cargar citas:', citasError);
         }
       }
 
@@ -85,12 +101,12 @@ const MiHistorialScreen = ({ navigation }) => {
       // Ordenar por fecha (más reciente primero)
       historialFiltrado.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
-      console.log('✅ Historial cargado:', historialFiltrado.length, 'registros');
+      console.log('📊 Historial filtrado:', historialFiltrado.length, 'registros');
       setHistorial(historialFiltrado);
 
     } catch (error) {
       console.error('❌ Error al cargar historial:', error);
-      Alert.alert('Error', 'No se pudo cargar el historial médico');
+      // No mostrar alerta molesta, solo dejar vacío
     } finally {
       setLoading(false);
     }
@@ -137,7 +153,6 @@ const MiHistorialScreen = ({ navigation }) => {
       <TouchableOpacity
         style={[styles.historialCard, { backgroundColor: theme.colors.card }]}
         onPress={() => {
-          // Navegar al detalle si existe
           Alert.alert(
             item.titulo,
             `${item.descripcion}\n\nFecha: ${formatearFecha(item.fecha)}\n${item.doctor || ''}`,

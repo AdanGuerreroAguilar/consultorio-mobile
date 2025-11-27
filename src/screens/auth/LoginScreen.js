@@ -11,14 +11,22 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authAPI } from '../../api/auth';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  const { theme } = useTheme();
+  const { login } = useAuth();
 
+  // ========================================
+  // 🔐 MANEJAR LOGIN
+  // ========================================
   const handleLogin = async () => {
     // Validaciones básicas
     if (!email.trim()) {
@@ -43,153 +51,198 @@ const LoginScreen = ({ navigation }) => {
     try {
       console.log('🔐 Intentando login con:', email);
       
-      // Llamar al API de login
-      const response = await authAPI.login(email, password);
+      // Llamar al login del AuthContext
+      const result = await login(email, password);
       
-      console.log('✅ Login exitoso:', response);
-
-      // Guardar token y usuario en AsyncStorage
-      await AsyncStorage.setItem('token', response.access_token);
-      await AsyncStorage.setItem('usuario', JSON.stringify(response.usuario));
-
-      console.log('👤 Usuario autenticado:', {
-        nombre: response.usuario.nombre,
-        rol: response.usuario.rol,
-        paciente_id: response.usuario.paciente_id
-      });
-
-      // Navegar según el rol del usuario usando los nombres CORRECTOS
-      switch (response.usuario.rol) {
-        case 'admin':
-          navigation.replace('AdminApp'); // ✅ CORREGIDO
-          break;
-        case 'doctor':
-          navigation.replace('DoctorApp'); // ✅ CORREGIDO
-          break;
-        case 'paciente':
-          navigation.replace('PacienteApp'); // ✅ CORREGIDO
-          break;
-        default:
-          Alert.alert('Error', 'Rol de usuario no reconocido');
+      if (result.success) {
+        console.log('✅ Login exitoso - AuthContext manejará la navegación');
+        // NO hacer navigation.replace() aquí
+        // El AppNavigator detectará automáticamente el cambio en isAuthenticated
+        // y mostrará el navigator correcto según el rol
+      } else {
+        Alert.alert('Error de autenticación', result.message);
       }
 
     } catch (error) {
       console.error('❌ Error en login:', error);
-      
-      if (error.response) {
-        // Error de respuesta del servidor
-        const mensaje = error.response.data?.detail || 'Credenciales incorrectas';
-        Alert.alert('Error de autenticación', mensaje);
-      } else if (error.request) {
-        // No se recibió respuesta del servidor
-        Alert.alert(
-          'Error de conexión',
-          'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
-        );
-      } else {
-        // Error en la configuración de la petición
-        Alert.alert('Error', 'Ocurrió un error inesperado. Por favor intenta de nuevo.');
-      }
+      Alert.alert('Error', 'Ocurrió un error inesperado. Por favor intenta de nuevo.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Función para login rápido (testing)
-  const quickLogin = async (email, password) => {
-    setEmail(email);
-    setPassword(password);
-    
-    // Simular delay para que se vea el cambio
-    setTimeout(() => {
-      handleLogin();
-    }, 100);
+  // ========================================
+  // ⚡ LOGIN RÁPIDO (PARA TESTING)
+  // ========================================
+  const quickLogin = (testEmail, testPassword) => {
+    setEmail(testEmail);
+    setPassword(testPassword);
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Consultorio Médico</Text>
-          <Text style={styles.subtitle}>Iniciar Sesión</Text>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={[styles.logoCircle, { backgroundColor: theme.colors.primary + '20' }]}>
+            <Ionicons name="medical" size={48} color={theme.colors.primary} />
+          </View>
+          <Text style={[styles.title, { color: theme.colors.text }]}>
+            Consultorio Médico
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+            Iniciar Sesión
+          </Text>
+        </View>
 
-          <View style={styles.form}>
-            <TextInput
-              style={styles.input}
-              placeholder="Correo electrónico"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!loading}
-            />
+        {/* Formulario */}
+        <View style={[styles.form, { backgroundColor: theme.colors.card }]}>
+          {/* Email */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Correo electrónico
+            </Text>
+            <View style={[styles.inputWrapper, { borderColor: theme.colors.border }]}>
+              <Ionicons 
+                name="mail-outline" 
+                size={20} 
+                color={theme.colors.textSecondary} 
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="correo@ejemplo.com"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+              />
+            </View>
+          </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Contraseña"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              editable={!loading}
-            />
+          {/* Contraseña */}
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Contraseña
+            </Text>
+            <View style={[styles.inputWrapper, { borderColor: theme.colors.border }]}>
+              <Ionicons 
+                name="lock-closed-outline" 
+                size={20} 
+                color={theme.colors.textSecondary}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={[styles.input, { color: theme.colors.text }]}
+                placeholder="Tu contraseña"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                editable={!loading}
+              />
+              <TouchableOpacity 
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+                disabled={loading}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                  size={20} 
+                  color={theme.colors.textSecondary} 
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
+          {/* Botón Login */}
+          <TouchableOpacity
+            style={[
+              styles.button, 
+              { backgroundColor: theme.colors.primary },
+              loading && styles.buttonDisabled
+            ]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="log-in-outline" size={20} color="#fff" />
                 <Text style={styles.buttonText}>Iniciar Sesión</Text>
-              )}
-            </TouchableOpacity>
+              </>
+            )}
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.linkButton}
+          {/* Link a registro */}
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>
+              ¿No tienes cuenta?{' '}
+            </Text>
+            <TouchableOpacity 
               onPress={() => navigation.navigate('Registro')}
               disabled={loading}
             >
-              <Text style={styles.linkText}>
-                ¿No tienes cuenta? Regístrate aquí
+              <Text style={[styles.linkText, { color: theme.colors.primary }]}>
+                Regístrate aquí
               </Text>
             </TouchableOpacity>
           </View>
-
-          {/* Botones de prueba rápida */}
-          <View style={styles.testButtonsContainer}>
-            <Text style={styles.testTitle}>Prueba rápida:</Text>
-            
-            <TouchableOpacity
-              style={[styles.testButton, styles.adminButton]}
-              onPress={() => quickLogin('admin@consultorio.com', 'Admin2025!')}
-              disabled={loading}
-            >
-              <Text style={styles.testButtonText}>👨‍💼 Admin</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.testButton, styles.doctorButton]}
-              onPress={() => quickLogin('maria.lopez@consultorio.com', 'Pediatria2025')}
-              disabled={loading}
-            >
-              <Text style={styles.testButtonText}>👨‍⚕️ Doctor</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.testButton, styles.pacienteButton]}
-              onPress={() => quickLogin('paciente@test.com', 'paciente123')}
-              disabled={loading}
-            >
-              <Text style={styles.testButtonText}>👤 Paciente</Text>
-            </TouchableOpacity>
-          </View>
         </View>
+
+        {/* Botones de prueba rápida (solo desarrollo) */}
+        {__DEV__ && (
+          <View style={[styles.testSection, { borderColor: theme.colors.warning }]}>
+            <Text style={[styles.testTitle, { color: theme.colors.warning }]}>
+              ⚡ Prueba Rápida (Dev)
+            </Text>
+            
+            <View style={styles.testButtons}>
+              <TouchableOpacity
+                style={[styles.testButton, { backgroundColor: '#9C27B0' }]}
+                onPress={() => quickLogin('admin@consultorio.com', 'Admin2025!')}
+                disabled={loading}
+              >
+                <Ionicons name="shield" size={16} color="#fff" />
+                <Text style={styles.testButtonText}>Admin</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.testButton, { backgroundColor: '#4CAF50' }]}
+                onPress={() => quickLogin('maria.lopez@consultorio.com', 'Pediatria2025')}
+                disabled={loading}
+              >
+                <Ionicons name="medical" size={16} color="#fff" />
+                <Text style={styles.testButtonText}>Doctor</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.testButton, { backgroundColor: '#2196F3' }]}
+                onPress={() => quickLogin('paciente@test.com', 'paciente123')}
+                disabled={loading}
+              >
+                <Ionicons name="person" size={16} color="#fff" />
+                <Text style={styles.testButtonText}>Paciente</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.testHint, { color: theme.colors.textSecondary }]}>
+              Presiona un botón para llenar los campos, luego "Iniciar Sesión"
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -198,32 +251,34 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   scrollContainer: {
     flexGrow: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
     padding: 20,
+    justifyContent: 'center',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#2196F3',
-    textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 24,
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 40,
+    fontSize: 18,
   },
   form: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 15,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -231,72 +286,100 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  input: {
-    backgroundColor: '#f9f9f9',
+  inputContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 50,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
     fontSize: 16,
+    height: '100%',
+  },
+  eyeIcon: {
+    padding: 5,
   },
   button: {
-    backgroundColor: '#2196F3',
-    borderRadius: 8,
-    padding: 15,
+    flexDirection: 'row',
+    height: 50,
+    borderRadius: 10,
+    justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
+    gap: 10,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    opacity: 0.6,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
   },
-  linkButton: {
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginTop: 20,
-    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 14,
   },
   linkText: {
-    color: '#2196F3',
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '600',
   },
-  testButtonsContainer: {
+  // Estilos para sección de pruebas
+  testSection: {
     marginTop: 30,
     padding: 15,
-    backgroundColor: '#fff',
-    borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#FF9800',
+    borderRadius: 10,
+    borderStyle: 'dashed',
   },
   testTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#FF9800',
-    marginBottom: 15,
     textAlign: 'center',
+    marginBottom: 15,
+  },
+  testButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: 10,
   },
   testButton: {
+    flex: 1,
+    flexDirection: 'row',
     padding: 12,
     borderRadius: 8,
-    marginBottom: 10,
     alignItems: 'center',
-  },
-  adminButton: {
-    backgroundColor: '#9C27B0',
-  },
-  doctorButton: {
-    backgroundColor: '#4CAF50',
-  },
-  pacienteButton: {
-    backgroundColor: '#2196F3',
+    justifyContent: 'center',
+    gap: 6,
   },
   testButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  testHint: {
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
   },
 });
 

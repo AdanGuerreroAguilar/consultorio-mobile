@@ -1,69 +1,119 @@
-// navigation/AppNavigator.js
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View, Text, StyleSheet } from 'react-native';
+import React from "react";
+import { ActivityIndicator, View, Text, StyleSheet } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
-import LoginScreen from '../screens/auth/LoginScreen';
-import RegistroScreen from '../screens/auth/RegistroScreen';
+// Auth Screens
+import LoginScreen from "../screens/auth/LoginScreen";
+import RegistroScreen from "../screens/auth/RegistroScreen";
 
-import AdminNavigator from './AdminNavigator';
-import DoctorNavigator from './DoctorNavigator';
-import PacienteNavigator from './PacienteNavigator';
+// Navigators por rol
+import AdminNavigator from "./AdminNavigator";
+import DoctorNavigator from "./DoctorNavigator";
+import PacienteNavigator from "./PacienteNavigator";
 
-const AuthStack = createNativeStackNavigator();
-const AppStack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator();
 
-// Stack de autenticación (público)
-function AuthStackNavigator() {
+// ========================================
+// 🔄 PANTALLA DE CARGA
+// ========================================
+const LoadingScreen = () => {
+  const { theme } = useTheme();
+  
   return (
-    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-      <AuthStack.Screen name="Login" component={LoginScreen} />
-      <AuthStack.Screen name="Registro" component={RegistroScreen} />
-    </AuthStack.Navigator>
+    <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+      <ActivityIndicator size="large" color={theme.colors.primary} />
+      <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+        Cargando...
+      </Text>
+    </View>
   );
-}
+};
 
-// Stack de la app (privado)
-function AppStackNavigator({ userRole }) {
-  return (
-    <AppStack.Navigator screenOptions={{ headerShown: false }}>
-      {userRole === 'admin' && (
-        <AppStack.Screen name="AdminApp" component={AdminNavigator} />
-      )}
-      {userRole === 'doctor' && (
-        <AppStack.Screen name="DoctorApp" component={DoctorNavigator} />
-      )}
-      {userRole === 'paciente' && (
-        <AppStack.Screen name="PacienteApp" component={PacienteNavigator} />
-      )}
-    </AppStack.Navigator>
-  );
-}
-
+// ========================================
+// 🧭 NAVEGADOR PRINCIPAL
+// ========================================
 export default function AppNavigator() {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
+  const { theme } = useTheme();
 
-  // Pantalla de carga
+  // Mostrar pantalla de carga mientras verifica la sesión
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Cargando...</Text>
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
+  console.log("🧭 [AppNavigator] Estado actual:");
+  console.log("   - isAuthenticated:", isAuthenticated);
+  console.log("   - user:", user?.nombre, "(", user?.rol, ")");
+
   return (
-    <NavigationContainer>
-      {isAuthenticated && user ? (
-        // Usuario autenticado - mostrar app según rol
-        <AppStackNavigator userRole={user.rol} />
+    <NavigationContainer
+      theme={{
+        dark: theme.dark,
+        colors: {
+          primary: theme.colors.primary,
+          background: theme.colors.background,
+          card: theme.colors.card,
+          text: theme.colors.text,
+          border: theme.colors.border,
+          notification: theme.colors.primary,
+        },
+      }}
+    >
+      {!isAuthenticated ? (
+        // ========================================
+        // 🔐 NO AUTENTICADO - Mostrar Auth Stack
+        // ========================================
+        <Stack.Navigator 
+          screenOptions={{ 
+            headerShown: false,
+            animation: 'slide_from_right',
+          }}
+        >
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Registro" component={RegistroScreen} />
+        </Stack.Navigator>
       ) : (
-        // Usuario no autenticado - mostrar login
-        <AuthStackNavigator />
+        // ========================================
+        // ✅ AUTENTICADO - Mostrar Navigator según rol
+        // ========================================
+        <>
+          {user?.rol === "admin" && (
+            <>
+              {console.log("🔴 [AppNavigator] Cargando AdminNavigator")}
+              <AdminNavigator />
+            </>
+          )}
+          
+          {user?.rol === "doctor" && (
+            <>
+              {console.log("🟢 [AppNavigator] Cargando DoctorNavigator")}
+              <DoctorNavigator />
+            </>
+          )}
+          
+          {user?.rol === "paciente" && (
+            <>
+              {console.log("🔵 [AppNavigator] Cargando PacienteNavigator")}
+              <PacienteNavigator />
+            </>
+          )}
+
+          {/* Si el rol no es reconocido, mostrar error */}
+          {!["admin", "doctor", "paciente"].includes(user?.rol) && (
+            <View style={[styles.errorContainer, { backgroundColor: theme.colors.background }]}>
+              <Text style={[styles.errorText, { color: theme.colors.danger }]}>
+                Error: Rol de usuario no reconocido
+              </Text>
+              <Text style={[styles.errorSubtext, { color: theme.colors.textSecondary }]}>
+                Rol actual: {user?.rol || "ninguno"}
+              </Text>
+            </View>
+          )}
+        </>
       )}
     </NavigationContainer>
   );
@@ -74,11 +124,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 15,
     fontSize: 16,
-    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  errorSubtext: {
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: 'center',
   },
 });
