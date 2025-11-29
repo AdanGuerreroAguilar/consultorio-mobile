@@ -10,16 +10,16 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ============================================
+
   // Cargar sesión al iniciar
-  // ============================================
+
   useEffect(() => {
     const loadSession = async () => {
       try {
         const storedToken = await AsyncStorage.getItem("token");
 
         if (!storedToken) {
-          console.log("❌ No hay sesión guardada");
+          console.log(" No hay sesión guardada");
           setLoading(false);
           return;
         }
@@ -29,9 +29,8 @@ export const AuthProvider = ({ children }) => {
 
         try {
           const response = await client.get("/api/auth/me");
-          // /api/auth/me devuelve el usuario DIRECTAMENTE
           const userData = response.data;
-          console.log("✅ Sesión restaurada:", userData.email);
+          console.log(" Sesión restaurada:", userData.email);
           setUser(userData);
           await AsyncStorage.setItem("user", JSON.stringify(userData));
         } catch (apiError) {
@@ -43,7 +42,7 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
         }
       } catch (error) {
-        console.log("❌ Error cargando sesión:", error);
+        console.log(" Error cargando sesión:", error);
       } finally {
         setLoading(false);
       }
@@ -52,9 +51,8 @@ export const AuthProvider = ({ children }) => {
     loadSession();
   }, []);
 
-  // ============================================
   // LOGIN
-  // ============================================
+
   const login = async (email, password) => {
     try {
       setLoading(true);
@@ -63,7 +61,7 @@ export const AuthProvider = ({ children }) => {
       const accessToken = response.data.access_token;
       const userData = response.data.usuario;
 
-      console.log("✅ Login exitoso:", userData.email);
+      console.log(" Login exitoso:", userData.email);
 
       await AsyncStorage.setItem("token", accessToken);
       await AsyncStorage.setItem("user", JSON.stringify(userData));
@@ -74,7 +72,7 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true };
     } catch (error) {
-      console.log("❌ Error login:", error.response?.data || error.message);
+      console.log(" Error login:", error.response?.data || error.message);
       return {
         success: false,
         message: error.response?.data?.detail || "Credenciales incorrectas",
@@ -84,32 +82,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ============================================
   // LOGOUT - LIMPIA TODO
-  // ============================================
+
   const logout = async () => {
-    console.log("🔓 Cerrando sesión...");
+    console.log(" Cerrando sesión...");
     
-    // 1. Limpiar AsyncStorage
+    //  Limpia AsyncStorage
     await AsyncStorage.removeItem("token");
     await AsyncStorage.removeItem("user");
-    
-    // 2. Limpiar token de axios
     setAuthToken(null);
-    
-    // 3. Limpiar estado - IMPORTANTE: en este orden
     setToken(null);
     setUser(null);
     
-    console.log("✅ Sesión cerrada completamente");
+    console.log(" Sesión cerrada completamente");
   };
 
-  // ============================================
   // UPDATE USER (para editar perfil)
-  // ============================================
+
   const updateUser = async (datos) => {
     try {
-      console.log("📝 Actualizando perfil:", datos);
+      console.log(" Actualizando perfil:", datos);
       
       // Llamar al endpoint de perfil
       await client.put("/api/perfil", datos);
@@ -119,17 +111,16 @@ export const AuthProvider = ({ children }) => {
       setUser(updatedUser);
       await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
       
-      console.log("✅ Perfil actualizado");
+      console.log(" Perfil actualizado");
       return { success: true };
     } catch (error) {
-      console.log("❌ Error actualizando perfil:", error.response?.data || error.message);
+      console.log(" Error actualizando perfil:", error.response?.data || error.message);
       throw error;
     }
   };
 
-  // ============================================
   // REFRESH USER
-  // ============================================
+
   const refreshUser = async () => {
     try {
       const response = await client.get("/api/auth/me");
@@ -137,7 +128,7 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       await AsyncStorage.setItem("user", JSON.stringify(userData));
     } catch (error) {
-      console.log("❌ Error refrescando usuario:", error);
+      console.log(" Error refrescando usuario:", error);
     }
   };
 

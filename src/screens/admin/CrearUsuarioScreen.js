@@ -1,5 +1,3 @@
-// screens/admin/CrearUsuarioScreen.js
-
 import React, { useState } from 'react';
 import {
   View,
@@ -30,9 +28,8 @@ const CrearUsuarioScreen = ({ navigation }) => {
   const [telefono, setTelefono] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ============================================================
   // VALIDACIONES
-  // ============================================================
+
   const validar = () => {
     if (!nombre.trim()) return "El nombre es obligatorio";
     if (!apellido.trim()) return "El apellido es obligatorio";
@@ -49,14 +46,12 @@ const CrearUsuarioScreen = ({ navigation }) => {
     return null;
   };
 
-  // ============================================================
   // CREAR USUARIO
-  // ============================================================
+
   const handleCrear = () => {
     const error = validar();
     if (error) return Alert.alert("Error", error);
 
-    // Confirmación de seguridad
     Alert.alert(
       "Confirmación",
       `¿Registrar a ${nombre} ${apellido} como ${rol}?`,
@@ -83,7 +78,6 @@ const CrearUsuarioScreen = ({ navigation }) => {
         especialidad: rol === 'doctor' ? especialidad.trim() : null,
       };
 
-      // ✅ CORREGIDO: Ruta con /api/
       await apiClient.post('/api/usuarios', datos);
 
       Alert.alert("Éxito", "Usuario creado correctamente", [
@@ -101,9 +95,6 @@ const CrearUsuarioScreen = ({ navigation }) => {
     }
   };
 
-  // ============================================================
-  // UI
-  // ============================================================
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
@@ -236,9 +227,9 @@ const CrearUsuarioScreen = ({ navigation }) => {
 
 export default CrearUsuarioScreen;
 
-// ============================================================
+
 // ESTILOS
-// ============================================================
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20 },

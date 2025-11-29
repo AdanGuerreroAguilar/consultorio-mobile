@@ -1,21 +1,21 @@
 import client, { setAuthToken } from './client';
 
 const authAPI = {
-  // ========================================
-  // 🔐 LOGIN
-  // ========================================
+
+  // LOGIN
+
   login: async (email, password) => {
     try {
-      console.log('🔐 [AUTH] Intentando login:', email);
+      console.log(' [AUTH] Intentando login:', email);
       
       const response = await client.post('/api/auth/login', {
         email: email.toLowerCase().trim(),
         password,
       });
 
-      console.log('✅ [AUTH] Login exitoso');
-      console.log('   👤 Usuario:', response.data.usuario?.nombre);
-      console.log('   🎭 Rol:', response.data.usuario?.rol);
+      console.log(' [AUTH] Login exitoso');
+      console.log('    Usuario:', response.data.usuario?.nombre);
+      console.log('    Rol:', response.data.usuario?.rol);
 
       // Guardar el token automáticamente
       if (response.data.access_token) {
@@ -24,17 +24,17 @@ const authAPI = {
 
       return response.data;
     } catch (error) {
-      console.error('❌ [AUTH] Error en login:', error.response?.data || error.message);
+      console.error(' [AUTH] Error en login:', error.response?.data || error.message);
       throw error;
     }
   },
 
-  // ========================================
-  // 📝 REGISTRO DE PACIENTE
-  // ========================================
+
+  //  REGISTRO DE PACIENTE
+
   registroPaciente: async (datos) => {
     try {
-      console.log('📝 [AUTH] Registrando paciente:', datos.email);
+      console.log(' [AUTH] Registrando paciente:', datos.email);
       
       const response = await client.post('/api/auth/registro-paciente', {
         email: datos.email.toLowerCase().trim(),
@@ -49,35 +49,32 @@ const authAPI = {
         tipo_sangre: datos.tipo_sangre || null,
       });
 
-      console.log('✅ [AUTH] Registro exitoso');
+      console.log(' [AUTH] Registro exitoso');
       return response.data;
     } catch (error) {
-      console.error('❌ [AUTH] Error en registro:', error.response?.data || error.message);
+      console.error(' [AUTH] Error en registro:', error.response?.data || error.message);
       throw error;
     }
   },
 
-  // ========================================
-  // 👤 OBTENER USUARIO ACTUAL
-  // ========================================
+  // OBTENER USUARIO ACTUAL
+
   me: async () => {
     try {
-      console.log('👤 [AUTH] Obteniendo usuario actual...');
+      console.log(' [AUTH] Obteniendo usuario actual...');
       const response = await client.get('/api/auth/me');
-      console.log('✅ [AUTH] Usuario obtenido:', response.data?.nombre);
+      console.log(' [AUTH] Usuario obtenido:', response.data?.nombre);
       return response.data;
     } catch (error) {
-      console.error('❌ [AUTH] Error obteniendo usuario:', error.response?.data || error.message);
+      console.error(' [AUTH] Error obteniendo usuario:', error.response?.data || error.message);
       throw error;
     }
   },
 
-  // ========================================
-  // 🚪 LOGOUT (limpiar token)
-  // ========================================
+
   logout: () => {
     setAuthToken(null);
-    console.log('🚪 [AUTH] Sesión cerrada');
+    console.log(' [AUTH] Sesión cerrada');
   },
 };
 

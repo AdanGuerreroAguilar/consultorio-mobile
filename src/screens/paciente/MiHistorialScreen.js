@@ -1,218 +1,108 @@
-import React, { useState, useCallback } from 'react';
+// screens/paciente/MiHistorialScreen.js
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
-  RefreshControl,
-  Alert,
+  ScrollView,
+  Image,
   ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import client from '../../api/client';
+  Dimensions,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../context/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
+import apiClient from "../../api/client";
 
-const MiHistorialScreen = ({ navigation }) => {
-  const { user } = useAuth();
+const { width } = Dimensions.get('window');
+const API_BASE_URL = "http://192.168.0.200:8000"; //  IP
+
+export default function MiHistorialScreen({ navigation }) {
   const { theme } = useTheme();
-  const [historial, setHistorial] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState('todos'); // todos, consultas, tratamientos
+  const { user } = useAuth();
 
-  useFocusEffect(
-    useCallback(() => {
-      cargarHistorial();
-    }, [filtro, user])
-  );
+  const [tab, setTab] = useState("citas");
+  const [loading, setLoading] = useState(true);
+
+  const [citas, setCitas] = useState([]);
+  const [notas, setNotas] = useState([]);
+  const [signos, setSignos] = useState([]);
+  const [imagenes, setImagenes] = useState([]);
+
+  useEffect(() => {
+    cargarHistorial();
+  }, []);
 
   const cargarHistorial = async () => {
     setLoading(true);
     try {
-      // Obtener el ID del paciente
-      const pacienteId = user?.paciente_id || user?.id;
-      console.log('📋 Cargando historial para paciente:', pacienteId);
+      const pacienteId = user.paciente_id;
 
       if (!pacienteId) {
-        console.warn('⚠️ No se encontró paciente_id');
-        setHistorial([]);
+        console.log(" No hay paciente_id en el usuario");
         return;
       }
 
-      let historialData = [];
+      console.log(" Cargando historial del paciente:", pacienteId);
+      const response = await apiClient.get(`/api/pacientes/${pacienteId}/historial`);
       
-      // Intentar cargar desde el endpoint de historial
-      try {
-        const response = await client.get(`/pacientes/${pacienteId}/historial`);
-        historialData = Array.isArray(response.data) ? response.data : [];
-        console.log('✅ Historial cargado desde endpoint:', historialData.length);
-      } catch (error) {
-        console.log('ℹ️ Endpoint de historial no disponible, cargando citas completadas...');
-        
-        // Fallback: cargar citas completadas como historial
-        try {
-          const citasResponse = await client.get('/citas');
-          let todasCitas = [];
-          
-          if (Array.isArray(citasResponse.data)) {
-            todasCitas = citasResponse.data;
-          } else if (citasResponse.data?.data) {
-            todasCitas = citasResponse.data.data;
-          }
-          
-          // Filtrar citas completadas/pasadas del paciente
-          historialData = todasCitas
-            .filter(cita => {
-              const esMiCita = cita.paciente_id === pacienteId || 
-                              cita.paciente_id === parseInt(pacienteId) ||
-                              cita.usuario_id === user?.id;
-              const esCompletada = cita.estado === 'completada' || 
-                                  new Date(cita.fecha_hora) < new Date();
-              return esMiCita && esCompletada;
-            })
-            .map(cita => ({
-              id: cita.id,
-              tipo: 'consulta',
-              fecha: cita.fecha_hora,
-              titulo: cita.motivo || 'Consulta médica',
-              descripcion: cita.notas || cita.diagnostico || 'Sin detalles adicionales',
-              doctor: cita.doctor_nombre 
-                ? `Dr. ${cita.doctor_nombre} ${cita.doctor_apellido || ''}` 
-                : 'Doctor asignado',
-              estado: cita.estado,
-            }));
-            
-          console.log('✅ Historial cargado desde citas:', historialData.length);
-        } catch (citasError) {
-          console.error('❌ Error al cargar citas:', citasError);
-        }
-      }
+      console.log(" Respuesta historial:", response.data);
 
-      // Aplicar filtros
-      let historialFiltrado = historialData;
-      if (filtro === 'consultas') {
-        historialFiltrado = historialData.filter(item => item.tipo === 'consulta');
-      } else if (filtro === 'tratamientos') {
-        historialFiltrado = historialData.filter(item => item.tipo === 'tratamiento');
-      }
+      setCitas(response.data.citas || []);
+      setNotas(response.data.notas || []);
+      setSignos(response.data.signos_vitales || []);
+      setImagenes(response.data.imagenes || []);
 
-      // Ordenar por fecha (más reciente primero)
-      historialFiltrado.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
-      console.log('📊 Historial filtrado:', historialFiltrado.length, 'registros');
-      setHistorial(historialFiltrado);
-
+      console.log(" Imágenes cargadas:", response.data.imagenes?.length || 0);
     } catch (error) {
-      console.error('❌ Error al cargar historial:', error);
-      // No mostrar alerta molesta, solo dejar vacío
+      console.log(" Error cargando historial:", error.response?.data || error);
     } finally {
       setLoading(false);
     }
   };
 
   const formatearFecha = (fechaStr) => {
-    try {
-      const fecha = new Date(fechaStr);
-      return fecha.toLocaleDateString('es-MX', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch {
-      return fechaStr;
-    }
+    const fecha = new Date(fechaStr);
+    return fecha.toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
-  const getTipoIcon = (tipo) => {
-    const icons = {
-      consulta: 'medical-outline',
-      tratamiento: 'fitness-outline',
-      examen: 'flask-outline',
-      receta: 'document-text-outline',
-    };
-    return icons[tipo] || 'document-outline';
-  };
-
-  const getTipoColor = (tipo) => {
-    const colors = {
-      consulta: theme.colors.primary,
-      tratamiento: theme.colors.success || '#4CAF50',
-      examen: theme.colors.warning || '#FFC107',
-      receta: '#9C27B0',
-    };
-    return colors[tipo] || theme.colors.textSecondary;
-  };
-
-  const renderHistorialItem = ({ item }) => {
-    const tipoColor = getTipoColor(item.tipo);
-
-    return (
-      <TouchableOpacity
-        style={[styles.historialCard, { backgroundColor: theme.colors.card }]}
-        onPress={() => {
-          Alert.alert(
-            item.titulo,
-            `${item.descripcion}\n\nFecha: ${formatearFecha(item.fecha)}\n${item.doctor || ''}`,
-            [{ text: 'OK' }]
-          );
-        }}
+  const TabButton = ({ name, icon, count }) => (
+    <TouchableOpacity
+      style={[
+        styles.tabButton,
+        tab === name && { borderBottomWidth: 3, borderBottomColor: theme.colors.primary },
+      ]}
+      onPress={() => setTab(name)}
+    >
+      <Ionicons
+        name={icon}
+        size={22}
+        color={tab === name ? theme.colors.primary : theme.colors.textSecondary}
+      />
+      <Text
+        style={[
+          styles.tabText,
+          { color: tab === name ? theme.colors.primary : theme.colors.textSecondary },
+        ]}
       >
-        <View style={styles.cardHeader}>
-          <View style={[styles.iconContainer, { backgroundColor: tipoColor + '20' }]}>
-            <Ionicons 
-              name={getTipoIcon(item.tipo)} 
-              size={24} 
-              color={tipoColor} 
-            />
-          </View>
-          <View style={styles.headerInfo}>
-            <Text style={[styles.tipo, { color: tipoColor }]}>
-              {item.tipo?.charAt(0).toUpperCase() + item.tipo?.slice(1) || 'Registro'}
-            </Text>
-            <Text style={[styles.fecha, { color: theme.colors.textSecondary }]}>
-              {formatearFecha(item.fecha)}
-            </Text>
-          </View>
-        </View>
+        {name.toUpperCase()}
+        {count > 0 && ` (${count})`}
+      </Text>
+    </TouchableOpacity>
+  );
 
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>
-          {item.titulo}
-        </Text>
-
-        {item.descripcion && (
-          <Text 
-            style={[styles.descripcion, { color: theme.colors.textSecondary }]}
-            numberOfLines={2}
-          >
-            {item.descripcion}
-          </Text>
-        )}
-
-        {item.doctor && (
-          <View style={styles.doctorRow}>
-            <Ionicons 
-              name="person-outline" 
-              size={16} 
-              color={theme.colors.textSecondary} 
-            />
-            <Text style={[styles.doctorText, { color: theme.colors.textSecondary }]}>
-              {item.doctor}
-            </Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
-  // Loading state
-  if (loading && historial.length === 0) {
+  if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+        <Text style={{ color: theme.colors.textSecondary, marginTop: 10 }}>
           Cargando historial...
         </Text>
       </View>
@@ -221,211 +111,275 @@ const MiHistorialScreen = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Filtros */}
-      <View style={styles.filtros}>
-        {['todos', 'consultas', 'tratamientos'].map((tipo) => (
-          <TouchableOpacity
-            key={tipo}
-            style={[
-              styles.filtroButton,
-              filtro === tipo && { backgroundColor: theme.colors.primary },
-              { borderColor: theme.colors.primary }
-            ]}
-            onPress={() => setFiltro(tipo)}
-          >
-            <Text style={[
-              styles.filtroText,
-              filtro === tipo
-                ? { color: '#FFFFFF' }
-                : { color: theme.colors.primary }
-            ]}>
-              {tipo === 'todos' ? 'Todos' : tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      
+      {/* TABS */}
+      <View style={[styles.tabsContainer, { backgroundColor: theme.colors.card }]}>
+        <TabButton name="citas" icon="calendar-outline" count={citas.length} />
+        <TabButton name="notas" icon="document-text-outline" count={notas.length} />
+        <TabButton name="imagenes" icon="image-outline" count={imagenes.length} />
       </View>
 
-      {/* Resumen */}
-      <View style={[styles.resumenCard, { backgroundColor: theme.colors.primary + '15' }]}>
-        <View style={styles.resumenItem}>
-          <Text style={[styles.resumenValor, { color: theme.colors.primary }]}>
-            {historial.length}
-          </Text>
-          <Text style={[styles.resumenLabel, { color: theme.colors.textSecondary }]}>
-            Registros
-          </Text>
-        </View>
-        <View style={[styles.resumenDivider, { backgroundColor: theme.colors.border }]} />
-        <View style={styles.resumenItem}>
-          <Text style={[styles.resumenValor, { color: theme.colors.primary }]}>
-            {historial.filter(h => h.tipo === 'consulta').length}
-          </Text>
-          <Text style={[styles.resumenLabel, { color: theme.colors.textSecondary }]}>
-            Consultas
-          </Text>
-        </View>
-      </View>
+      <ScrollView contentContainerStyle={{ padding: 20 }}>
 
-      {/* Lista de historial */}
-      <FlatList
-        data={historial}
-        renderItem={renderHistorialItem}
-        keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
-        contentContainerStyle={styles.lista}
-        refreshControl={
-          <RefreshControl 
-            refreshing={loading} 
-            onRefresh={cargarHistorial}
-            colors={[theme.colors.primary]}
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons 
-              name="document-text-outline" 
-              size={64} 
-              color={theme.colors.textSecondary} 
-            />
-            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
-              No hay registros en tu historial médico
-            </Text>
-            <Text style={[styles.emptySubtext, { color: theme.colors.textSecondary }]}>
-              Tus consultas completadas aparecerán aquí
-            </Text>
-          </View>
-        }
-      />
+        {/* TAB: CITAS */}
+        {tab === "citas" && (
+          <>
+            {citas.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="calendar-outline" size={64} color={theme.colors.textSecondary} />
+                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                  No hay citas registradas
+                </Text>
+              </View>
+            ) : (
+              citas.map((cita) => (
+                <View key={cita.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
+                  <View style={styles.cardHeader}>
+                    <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+                      {cita.motivo}
+                    </Text>
+                    <View style={[styles.badge, { backgroundColor: theme.colors.primary + '20' }]}>
+                      <Text style={[styles.badgeText, { color: theme.colors.primary }]}>
+                        {cita.estado}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>
+                    {formatearFecha(cita.fecha_hora)}
+                  </Text>
+                  {cita.doctor_nombre && (
+                    <Text style={[styles.cardInfo, { color: theme.colors.textSecondary }]}>
+                      Dr. {cita.doctor_nombre} {cita.doctor_apellido}
+                    </Text>
+                  )}
+                </View>
+              ))
+            )}
+          </>
+        )}
+
+        {/* TAB: NOTAS */}
+        {tab === "notas" && (
+          <>
+            {notas.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="document-text-outline" size={64} color={theme.colors.textSecondary} />
+                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                  No hay notas médicas
+                </Text>
+              </View>
+            ) : (
+              notas.map((nota) => (
+                <View key={nota.id} style={[styles.card, { backgroundColor: theme.colors.card }]}>
+                  <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+                    {nota.titulo}
+                  </Text>
+                  <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>
+                    {formatearFecha(nota.fecha_nota)}
+                  </Text>
+                  <Text style={[styles.cardContent, { color: theme.colors.text }]} numberOfLines={4}>
+                    {nota.contenido}
+                  </Text>
+                  {nota.diagnostico && (
+                    <View style={[styles.diagnosticoBox, { backgroundColor: theme.colors.warning + '10' }]}>
+                      <Text style={[styles.diagnosticoLabel, { color: theme.colors.warning }]}>
+                        Diagnóstico:
+                      </Text>
+                      <Text style={[styles.diagnosticoText, { color: theme.colors.text }]}>
+                        {nota.diagnostico}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
+          </>
+        )}
+
+        {/* TAB: IMÁGENES */}
+        {tab === "imagenes" && (
+          <>
+            {imagenes.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="image-outline" size={64} color={theme.colors.textSecondary} />
+                <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+                  No hay imágenes médicas
+                </Text>
+              </View>
+            ) : (
+              imagenes.map((img) => (
+                <View key={img.id} style={[styles.imageCard, { backgroundColor: theme.colors.card }]}>
+                  <Image
+                    source={{ uri: `${API_BASE_URL}/uploads/${img.url}` }}
+                    style={styles.image}
+                    resizeMode="cover"
+                  />
+                  
+                  <View style={styles.imageInfo}>
+                    {img.descripcion && (
+                      <Text style={[styles.imageDescripcion, { color: theme.colors.text }]}>
+                        {img.descripcion}
+                      </Text>
+                    )}
+                    <Text style={[styles.imageFecha, { color: theme.colors.textSecondary }]}>
+                      {formatearFecha(img.fecha_subida)}
+                    </Text>
+                    {img.doctor_nombre && (
+                      <Text style={[styles.imageDoctor, { color: theme.colors.textSecondary }]}>
+                        <Ionicons name="person-outline" size={14} />
+                        {' '}Dr. {img.doctor_nombre} {img.doctor_apellido}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ))
+            )}
+          </>
+        )}
+
+      </ScrollView>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1 },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center" 
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-  },
-  filtros: {
-    flexDirection: 'row',
-    padding: 15,
-    gap: 10,
-  },
-  filtroButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    alignItems: 'center',
-  },
-  filtroText: {
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  resumenCard: {
-    flexDirection: 'row',
-    marginHorizontal: 15,
-    marginBottom: 10,
-    padding: 15,
-    borderRadius: 12,
-    justifyContent: 'space-around',
-  },
-  resumenItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  resumenValor: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  resumenLabel: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  resumenDivider: {
-    width: 1,
-    marginVertical: 5,
-  },
-  lista: {
-    padding: 15,
-    paddingTop: 5,
-  },
-  historialCard: {
-    padding: 16,
-    borderRadius: 15,
-    marginBottom: 12,
+
+  tabsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 12,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+
+  tabButton: { 
+    alignItems: "center",
+    paddingBottom: 8,
   },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+  tabText: { 
+    fontSize: 11, 
+    fontWeight: "600", 
+    marginTop: 4 
   },
-  headerInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  tipo: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  fecha: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  titulo: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  descripcion: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 10,
-  },
-  doctorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  doctorText: {
-    fontSize: 13,
-    marginLeft: 6,
-  },
+
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
   },
   emptyText: {
     fontSize: 16,
     marginTop: 15,
-    fontWeight: '500',
   },
-  emptySubtext: {
+
+  card: {
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 15,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+
+  cardTitle: { 
+    fontSize: 16, 
+    fontWeight: "600", 
+    flex: 1,
+    marginRight: 10,
+  },
+
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+
+  cardSubtitle: {
+    fontSize: 13,
+    marginBottom: 6,
+  },
+
+  cardInfo: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+
+  cardContent: {
     fontSize: 14,
+    lineHeight: 20,
     marginTop: 8,
-    textAlign: 'center',
+  },
+
+  diagnosticoBox: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 8,
+  },
+  diagnosticoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  diagnosticoText: {
+    fontSize: 13,
+  },
+
+  imageCard: {
+    borderRadius: 12,
+    marginBottom: 20,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+
+  image: {
+    width: '100%',
+    height: width * 0.7, // Altura proporcional
+  },
+
+  imageInfo: {
+    padding: 15,
+  },
+
+  imageDescripcion: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+
+  imageFecha: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+
+  imageDoctor: {
+    fontSize: 12,
+    marginTop: 4,
   },
 });
-
-export default MiHistorialScreen;

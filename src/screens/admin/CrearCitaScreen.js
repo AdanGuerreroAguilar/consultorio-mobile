@@ -1,5 +1,5 @@
 // screens/admin/CrearCitaScreen.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
+import { useFocusEffect } from "@react-navigation/native";
 import client from "../../api/client";
 
 export default function CrearCitaScreen({ navigation }) {
@@ -31,18 +32,30 @@ export default function CrearCitaScreen({ navigation }) {
     notas: "",
   });
 
+  // limpia el formulario
+  useFocusEffect(
+    useCallback(() => {
+      setFormData({
+        paciente_id: "",
+        doctor_id: "",
+        motivo: "",
+        fecha: "",
+        hora: "",
+        notas: "",
+      });
+    }, [])
+  );
+
   useEffect(() => {
     cargarDatos();
   }, []);
 
   const cargarDatos = async () => {
     try {
-      // Cargar doctores
       const resUsuarios = await client.get("/api/usuarios");
       const doctoresList = (resUsuarios.data || []).filter((u) => u.rol === "doctor");
       setDoctores(doctoresList);
 
-      // Cargar pacientes
       const resPacientes = await client.get("/api/pacientes");
       setPacientes(resPacientes.data || []);
     } catch (error) {
@@ -54,49 +67,27 @@ export default function CrearCitaScreen({ navigation }) {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const validarFormulario = () => {
     const { paciente_id, doctor_id, motivo, fecha, hora } = formData;
 
-    if (!paciente_id) {
-      Alert.alert("Error", "Selecciona un paciente");
-      return false;
-    }
-    if (!doctor_id) {
-      Alert.alert("Error", "Selecciona un doctor");
-      return false;
-    }
-    if (!motivo.trim()) {
-      Alert.alert("Error", "Ingresa el motivo de la cita");
-      return false;
-    }
-    if (!fecha) {
-      Alert.alert("Error", "Ingresa la fecha (YYYY-MM-DD)");
-      return false;
-    }
-    if (!hora) {
-      Alert.alert("Error", "Ingresa la hora (HH:MM)");
-      return false;
-    }
+    if (!paciente_id) return Alert.alert("Error", "Selecciona un paciente");
+    if (!doctor_id) return Alert.alert("Error", "Selecciona un doctor");
+    if (!motivo.trim()) return Alert.alert("Error", "Ingresa el motivo");
+    if (!fecha) return Alert.alert("Error", "Ingresa la fecha (YYYY-MM-DD)");
+    if (!hora) return Alert.alert("Error", "Ingresa la hora (HH:MM)");
 
-    // Validar formato fecha
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      Alert.alert("Error", "Formato de fecha inválido. Usa YYYY-MM-DD");
-      return false;
-    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha))
+      return Alert.alert("Error", "Formato de fecha inválido");
 
-    // Validar formato hora
-    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(hora)) {
-      Alert.alert("Error", "Formato de hora inválido. Usa HH:MM");
-      return false;
-    }
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(hora))
+      return Alert.alert("Error", "Formato de hora inválido");
 
     return true;
   };
 
-  // ✅ CREAR CITA - FUNCIONAL
   const handleCrear = async () => {
     if (!validarFormulario()) return;
 
@@ -116,15 +107,13 @@ export default function CrearCitaScreen({ navigation }) {
         duracion_minutos: 30,
       };
 
-      console.log("📝 Creando cita:", datos);
-      
       await client.post("/api/citas", datos);
 
-      Alert.alert("¡Éxito!", "Cita creada correctamente", [
+      Alert.alert("Éxito", "Cita creada correctamente", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      console.error("❌ Error:", error.response?.data || error.message);
+      console.error("❌ Error:", error.response?.data || error);
       Alert.alert("Error", error.response?.data?.detail || "No se pudo crear la cita");
     } finally {
       setLoading(false);
@@ -149,6 +138,7 @@ export default function CrearCitaScreen({ navigation }) {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       contentContainerStyle={styles.content}
     >
+      {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.primary + "15" }]}>
         <Ionicons name="calendar" size={48} color={theme.colors.primary} />
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Nueva Cita</Text>
@@ -162,10 +152,23 @@ export default function CrearCitaScreen({ navigation }) {
             selectedValue={formData.paciente_id}
             onValueChange={(v) => handleInputChange("paciente_id", v)}
             style={{ color: theme.colors.text }}
+            itemStyle={{ color: theme.colors.text }}
+            dropdownIconColor={theme.colors.text}
+            mode="dropdown"
           >
-            <Picker.Item label="Selecciona un paciente" value="" />
+            <Picker.Item
+              label="Selecciona un paciente"
+              value=""
+              color={theme.colors.textSecondary}
+            />
+
             {pacientes.map((p) => (
-              <Picker.Item key={p.id} label={`${p.nombre} ${p.apellido}`} value={p.id.toString()} />
+              <Picker.Item
+                key={p.id}
+                label={`${p.nombre} ${p.apellido}`}
+                value={p.id.toString()}
+                color={theme.colors.text}
+              />
             ))}
           </Picker>
         </View>
@@ -179,13 +182,24 @@ export default function CrearCitaScreen({ navigation }) {
             selectedValue={formData.doctor_id}
             onValueChange={(v) => handleInputChange("doctor_id", v)}
             style={{ color: theme.colors.text }}
+            itemStyle={{ color: theme.colors.text }}
+            dropdownIconColor={theme.colors.text}
+            mode="dropdown"
           >
-            <Picker.Item label="Selecciona un doctor" value="" />
+            <Picker.Item
+              label="Selecciona un doctor"
+              value=""
+              color={theme.colors.textSecondary}
+            />
+
             {doctores.map((d) => (
               <Picker.Item
                 key={d.id}
-                label={`Dr. ${d.nombre} ${d.apellido}${d.especialidad ? ` - ${d.especialidad}` : ""}`}
+                label={`Dr. ${d.nombre} ${d.apellido}${
+                  d.especialidad ? ` - ${d.especialidad}` : ""
+                }`}
                 value={d.id.toString()}
+                color={theme.colors.text}
               />
             ))}
           </Picker>
@@ -207,7 +221,9 @@ export default function CrearCitaScreen({ navigation }) {
 
       {/* Fecha */}
       <View style={styles.field}>
-        <Text style={[styles.label, { color: theme.colors.text }]}>Fecha * (YYYY-MM-DD)</Text>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Fecha * (YYYY-MM-DD)
+        </Text>
         <TextInput
           style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
           placeholder={getFechaHoy()}
@@ -219,7 +235,9 @@ export default function CrearCitaScreen({ navigation }) {
 
       {/* Hora */}
       <View style={styles.field}>
-        <Text style={[styles.label, { color: theme.colors.text }]}>Hora * (HH:MM)</Text>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Hora * (HH:MM)
+        </Text>
         <TextInput
           style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
           placeholder="09:00"
@@ -244,7 +262,7 @@ export default function CrearCitaScreen({ navigation }) {
         />
       </View>
 
-      {/* Botones */}
+      {/* Crear */}
       <TouchableOpacity
         style={[styles.button, { backgroundColor: theme.colors.primary }, loading && { opacity: 0.6 }]}
         onPress={handleCrear}
@@ -260,6 +278,7 @@ export default function CrearCitaScreen({ navigation }) {
         )}
       </TouchableOpacity>
 
+      {/* Cancelar */}
       <TouchableOpacity
         style={[styles.cancelButton, { borderColor: theme.colors.border }]}
         onPress={() => navigation.goBack()}
@@ -270,6 +289,9 @@ export default function CrearCitaScreen({ navigation }) {
   );
 }
 
+/*
+    ESTILOS
+*/
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20 },
@@ -277,11 +299,15 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 15, fontSize: 16 },
   header: { alignItems: "center", padding: 25, borderRadius: 15, marginBottom: 25 },
   headerTitle: { fontSize: 22, fontWeight: "bold", marginTop: 10 },
+
   field: { marginBottom: 20 },
   label: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
+
   input: { padding: 15, borderRadius: 12, fontSize: 16 },
   textArea: { padding: 15, borderRadius: 12, fontSize: 16, minHeight: 80, textAlignVertical: "top" },
+
   pickerContainer: { borderRadius: 12, overflow: "hidden" },
+
   button: {
     flexDirection: "row",
     alignItems: "center",
@@ -292,6 +318,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+
   cancelButton: {
     padding: 16,
     borderRadius: 12,

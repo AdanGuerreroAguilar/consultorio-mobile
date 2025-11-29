@@ -1,5 +1,5 @@
 // screens/paciente/CrearCitaPacienteScreen.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,90 +14,89 @@ import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
+import { useFocusEffect } from "@react-navigation/native";
 import client from "../../api/client";
+import { programarNotificacion } from "../../utils/notifications";
 
 export default function CrearCitaPacienteScreen({ navigation }) {
   const { theme } = useTheme();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [loadingDoctores, setLoadingDoctores] = useState(true);
+  const [loadingData, setLoadingData] = useState(true);
   const [doctores, setDoctores] = useState([]);
 
   const [formData, setFormData] = useState({
+    doctor_id: "",
     motivo: "",
     fecha: "",
     hora: "",
-    doctor_id: "",
     notas: "",
   });
 
-  useEffect(() => {
-    cargarDoctores();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setFormData({
+        doctor_id: "",
+        motivo: "",
+        fecha: "",
+        hora: "",
+        notas: "",
+      });
+      cargarDoctores();
+    }, [])
+  );
 
   const cargarDoctores = async () => {
+    setLoadingData(true);
     try {
-      // Usar endpoint de doctores o filtrar usuarios
-      const response = await client.get("/api/doctores");
-      setDoctores(response.data || []);
+      const resUsuarios = await client.get("/api/usuarios");
+      const doctoresList = (resUsuarios.data || []).filter(
+        (u) => u.rol === "doctor"
+      );
+      setDoctores(doctoresList);
     } catch (error) {
-      console.error("Error al cargar doctores:", error);
-      // Fallback: obtener usuarios con rol doctor
-      try {
-        const res = await client.get("/api/usuarios?rol=doctor");
-        setDoctores(res.data || []);
-      } catch (e) {
-        Alert.alert("Error", "No se pudieron cargar los doctores");
-      }
+      Alert.alert("Error", "No se pudieron cargar los doctores");
     } finally {
-      setLoadingDoctores(false);
+      setLoadingData(false);
     }
   };
 
   const handleInputChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const validarFormulario = () => {
-    const { motivo, fecha, hora, doctor_id } = formData;
-
-    if (!motivo.trim()) {
-      Alert.alert("Error", "Por favor ingresa el motivo de la cita");
-      return false;
-    }
-
-    if (!fecha) {
-      Alert.alert("Error", "Por favor ingresa la fecha");
-      return false;
-    }
-
-    if (!hora) {
-      Alert.alert("Error", "Por favor ingresa la hora");
-      return false;
-    }
+    const { doctor_id, motivo, fecha, hora } = formData;
 
     if (!doctor_id) {
       Alert.alert("Error", "Por favor selecciona un doctor");
       return false;
     }
-
-    // Validar formato de fecha
-    const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!fechaRegex.test(fecha)) {
+    if (!motivo.trim()) {
+      Alert.alert("Error", "Por favor ingresa el motivo de la cita");
+      return false;
+    }
+    if (!fecha) {
+      Alert.alert("Error", "Por favor ingresa la fecha");
+      return false;
+    }
+    if (!hora) {
+      Alert.alert("Error", "Por favor ingresa la hora");
+      return false;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
       Alert.alert("Error", "Formato de fecha inválido. Usa YYYY-MM-DD");
       return false;
     }
-
-    // Validar formato de hora
-    const horaRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!horaRegex.test(hora)) {
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(hora)) {
       Alert.alert("Error", "Formato de hora inválido. Usa HH:MM (24h)");
       return false;
     }
 
-    // Validar que la fecha no sea pasada
-    const fechaHora = new Date(`${fecha}T${hora}`);
-    if (fechaHora < new Date()) {
+    const fechaHoraSeleccionada = new Date(`${fecha}T${hora}:00`);
+    const ahora = new Date();
+
+    if (fechaHoraSeleccionada < ahora) {
       Alert.alert("Error", "No puedes agendar una cita en el pasado");
       return false;
     }
@@ -105,48 +104,78 @@ export default function CrearCitaPacienteScreen({ navigation }) {
     return true;
   };
 
-  const handleCrearCita = async () => {
+  const handleCrear = async () => {
     if (!validarFormulario()) return;
 
     setLoading(true);
 
     try {
-      const { motivo, fecha, hora, doctor_id, notas } = formData;
+      const { doctor_id, motivo, fecha, hora, notas } = formData;
       const fecha_hora = `${fecha}T${hora}:00`;
+      const pacienteId = user.paciente_id || user.id;
 
       const datos = {
-        paciente_id: user.paciente_id,
+        paciente_id: parseInt(pacienteId),
         doctor_id: parseInt(doctor_id),
         fecha_hora,
         motivo: motivo.trim(),
         notas: notas.trim() || null,
-        estado: "pendiente",
+        estado: "Programada",
         duracion_minutos: 30,
       };
 
       await client.post("/api/citas", datos);
 
-      Alert.alert("¡Éxito!", "Tu cita ha sido agendada correctamente", [
+      // Recordatorio 2 horas antes
+      const fechaCita = new Date(fecha_hora);
+      const dosHorasMs = 2 * 60 * 60 * 1000;
+      const fechaRecordatorio = new Date(fechaCita.getTime() - dosHorasMs);
+
+      if (fechaRecordatorio > new Date()) {
+        const horaFormateada = fechaCita.toLocaleTimeString("es-MX", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        await programarNotificacion(
+          "Recordatorio de cita",
+          `Tienes una cita médica a las ${horaFormateada}.`,
+          fechaRecordatorio
+        );
+      }
+
+      Alert.alert("Éxito", "Tu cita ha sido agendada correctamente", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      console.error("Error al crear cita:", error);
-      Alert.alert("Error", error.response?.data?.detail || "No se pudo crear la cita");
+      const mensajeError =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        "No se pudo crear la cita.";
+      Alert.alert("Error del Servidor", mensajeError);
     } finally {
       setLoading(false);
     }
   };
 
-  const getFechaMinima = () => {
-    const hoy = new Date();
-    return hoy.toISOString().split("T")[0];
-  };
+  const getFechaHoy = () => new Date().toISOString().split("T")[0];
 
-  if (loadingDoctores) {
+  if (loadingData) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={[styles.loadingText, { color: theme.colors.textSecondary }]}>
+        <Text
+          style={[
+            styles.loadingText,
+            { color: theme.colors.textSecondary },
+          ]}
+        >
           Cargando doctores...
         </Text>
       </View>
@@ -156,183 +185,281 @@ export default function CrearCitaPacienteScreen({ navigation }) {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={styles.contentContainer}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
     >
-      <View style={[styles.header, { backgroundColor: theme.colors.primary + "15" }]}>
+      <View style={styles.header}>
         <Ionicons name="calendar" size={48} color={theme.colors.primary} />
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
           Agendar Nueva Cita
         </Text>
-        <Text style={[styles.headerSubtitle, { color: theme.colors.textSecondary }]}>
+        <Text
+          style={[
+            styles.headerSubtitle,
+            { color: theme.colors.textSecondary },
+          ]}
+        >
           Completa la información para agendar tu cita
         </Text>
       </View>
 
-      <View style={styles.form}>
-        {/* Doctor */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Doctor *</Text>
-          <View
-            style={[
-              styles.pickerContainer,
-              { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-            ]}
-          >
-            <Picker
-              selectedValue={formData.doctor_id}
-              onValueChange={(value) => handleInputChange("doctor_id", value)}
-              style={{ color: theme.colors.text }}
-              enabled={!loading}
-            >
-              <Picker.Item label="Selecciona un doctor" value="" />
-              {doctores.map((doctor) => (
-                <Picker.Item
-                  key={doctor.id}
-                  label={`Dr. ${doctor.nombre} ${doctor.apellido}${
-                    doctor.especialidad ? ` - ${doctor.especialidad}` : ""
-                  }`}
-                  value={doctor.id.toString()}
-                />
-              ))}
-            </Picker>
-          </View>
-        </View>
-
-        {/* Motivo */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Motivo de la consulta *</Text>
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border },
-            ]}
-            placeholder="Ej. Control, dolor de cabeza, revisión general..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={formData.motivo}
-            onChangeText={(value) => handleInputChange("motivo", value)}
-            editable={!loading}
-            multiline
-            numberOfLines={2}
-          />
-        </View>
-
-        {/* Fecha */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Fecha *</Text>
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border },
-            ]}
-            placeholder={`YYYY-MM-DD (ej: ${getFechaMinima()})`}
-            placeholderTextColor={theme.colors.textSecondary}
-            value={formData.fecha}
-            onChangeText={(value) => handleInputChange("fecha", value)}
-            editable={!loading}
-          />
-        </View>
-
-        {/* Hora */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Hora *</Text>
-          <TextInput
-            style={[
-              styles.input,
-              { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border },
-            ]}
-            placeholder="HH:MM (ej: 09:00, 14:30)"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={formData.hora}
-            onChangeText={(value) => handleInputChange("hora", value)}
-            editable={!loading}
-            keyboardType="numbers-and-punctuation"
-          />
-        </View>
-
-        {/* Notas */}
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Notas adicionales (opcional)</Text>
-          <TextInput
-            style={[
-              styles.textArea,
-              { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border },
-            ]}
-            placeholder="Información adicional..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={formData.notas}
-            onChangeText={(value) => handleInputChange("notas", value)}
-            editable={!loading}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-
-        {/* Botones */}
-        <TouchableOpacity
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Doctor *
+        </Text>
+        <View
           style={[
-            styles.button,
-            { backgroundColor: theme.colors.primary },
-            loading && styles.buttonDisabled,
+            styles.pickerContainer,
+            {
+              backgroundColor: theme.colors.card,
+              borderColor: theme.colors.border,
+              borderWidth: 1,
+            },
           ]}
-          onPress={handleCrearCita}
-          disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-              <Text style={styles.buttonText}>Agendar Cita</Text>
-            </>
-          )}
-        </TouchableOpacity>
+          <Picker
+            selectedValue={formData.doctor_id}
+            onValueChange={(v) => handleInputChange("doctor_id", v)}
+            style={{ color: theme.colors.text }}
+            dropdownIconColor={theme.colors.text}
+            enabled={!loading}
+          >
+            <Picker.Item
+              label="Selecciona un doctor"
+              value=""
+              color={theme.colors.text}
+            />
 
-        <TouchableOpacity
-          style={[styles.cancelButton, { borderColor: theme.colors.border }]}
-          onPress={() => navigation.goBack()}
-          disabled={loading}
-        >
-          <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>Cancelar</Text>
-        </TouchableOpacity>
+            {doctores.map((d) => (
+              <Picker.Item
+                key={d.id}
+                label={`Dr. ${d.nombre} ${d.apellido}${
+                  d.especialidad ? ` - ${d.especialidad}` : ""
+                }`}
+                value={d.id.toString()}
+                color={theme.colors.text}
+              />
+            ))}
+          </Picker>
+        </View>
       </View>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Motivo *
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.colors.card,
+              color: theme.colors.text,
+              borderColor: theme.colors.border,
+              borderWidth: 1,
+            },
+          ]}
+          placeholder="Ej. Control, dolor de cabeza, revisión general..."
+          placeholderTextColor={theme.colors.textSecondary}
+          value={formData.motivo}
+          onChangeText={(v) => handleInputChange("motivo", v)}
+          editable={!loading}
+          multiline
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Fecha * (YYYY-MM-DD)
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.colors.card,
+              color: theme.colors.text,
+              borderColor: theme.colors.border,
+              borderWidth: 1,
+            },
+          ]}
+          placeholder={`Ejemplo: ${getFechaHoy()}`}
+          placeholderTextColor={theme.colors.textSecondary}
+          value={formData.fecha}
+          onChangeText={(v) => handleInputChange("fecha", v)}
+          editable={!loading}
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Hora * (HH:MM)
+        </Text>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.colors.card,
+              color: theme.colors.text,
+              borderColor: theme.colors.border,
+              borderWidth: 1,
+            },
+          ]}
+          placeholder="Ejemplo: 09:00, 14:30"
+          placeholderTextColor={theme.colors.textSecondary}
+          value={formData.hora}
+          onChangeText={(v) => handleInputChange("hora", v)}
+          editable={!loading}
+          keyboardType="numbers-and-punctuation"
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Notas (opcional)
+        </Text>
+        <TextInput
+          style={[
+            styles.textArea,
+            {
+              backgroundColor: theme.colors.card,
+              color: theme.colors.text,
+              borderColor: theme.colors.border,
+              borderWidth: 1,
+            },
+          ]}
+          placeholder="Información adicional..."
+          placeholderTextColor={theme.colors.textSecondary}
+          value={formData.notas}
+          onChangeText={(v) => handleInputChange("notas", v)}
+          editable={!loading}
+          multiline
+          numberOfLines={3}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={[
+          styles.button,
+          { backgroundColor: theme.colors.primary },
+          loading && { opacity: 0.6 },
+        ]}
+        onPress={handleCrear}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <>
+            <Ionicons name="checkmark-circle" size={22} color="#fff" />
+            <Text style={styles.buttonText}>Agendar Cita</Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.cancelButton,
+          { borderColor: theme.colors.border },
+        ]}
+        onPress={() => navigation.goBack()}
+        disabled={loading}
+      >
+        <Text
+          style={[
+            styles.cancelButtonText,
+            { color: theme.colors.text },
+          ]}
+        >
+          Cancelar
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  contentContainer: { padding: 20 },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: { marginTop: 15, fontSize: 16 },
-  header: { alignItems: "center", padding: 30, borderRadius: 20, marginBottom: 30 },
-  headerTitle: { fontSize: 24, fontWeight: "bold", marginTop: 15, marginBottom: 8 },
-  headerSubtitle: { fontSize: 14, textAlign: "center" },
-  form: { gap: 5 },
-  inputContainer: { marginBottom: 20 },
-  label: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
-  input: { minHeight: 50, borderWidth: 1, borderRadius: 10, paddingHorizontal: 15, paddingVertical: 12, fontSize: 16 },
-  textArea: { minHeight: 100, borderWidth: 1, borderRadius: 10, paddingHorizontal: 15, paddingVertical: 12, fontSize: 16 },
-  pickerContainer: { borderWidth: 1, borderRadius: 10, overflow: "hidden" },
-  button: {
-    flexDirection: "row",
-    height: 50,
-    borderRadius: 10,
+  content: { padding: 20, paddingBottom: 40 },
+
+  loadingContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 10,
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+  },
+
+  header: {
+    alignItems: "center",
+    padding: 25,
+    borderRadius: 15,
+    marginBottom: 25,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
     marginTop: 10,
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
-  cancelButton: {
-    height: 50,
-    borderRadius: 10,
-    borderWidth: 1,
+  headerSubtitle: {
+    fontSize: 14,
+    marginTop: 5,
+    textAlign: "center",
+  },
+
+  field: { marginBottom: 20 },
+
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+
+  input: {
+    padding: 15,
+    borderRadius: 12,
+    fontSize: 16,
+    minHeight: 50,
+  },
+
+  textArea: {
+    padding: 15,
+    borderRadius: 12,
+    fontSize: 16,
+    minHeight: 100,
+    textAlignVertical: "top",
+  },
+
+  pickerContainer: {
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+
+  button: {
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  cancelButton: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: "center",
     marginTop: 10,
     marginBottom: 30,
   },
-  cancelButtonText: { fontSize: 16, fontWeight: "600" },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });

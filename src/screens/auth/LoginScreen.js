@@ -24,11 +24,7 @@ const LoginScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { login } = useAuth();
 
-  // ========================================
-  // 🔐 MANEJAR LOGIN
-  // ========================================
   const handleLogin = async () => {
-    // Validaciones básicas
     if (!email.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
       return;
@@ -39,7 +35,6 @@ const LoginScreen = ({ navigation }) => {
       return;
     }
 
-    // Validar formato de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert('Error', 'Por favor ingresa un correo electrónico válido');
@@ -49,34 +44,17 @@ const LoginScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      console.log('🔐 Intentando login con:', email);
-      
-      // Llamar al login del AuthContext
       const result = await login(email, password);
       
-      if (result.success) {
-        console.log('✅ Login exitoso - AuthContext manejará la navegación');
-        // NO hacer navigation.replace() aquí
-        // El AppNavigator detectará automáticamente el cambio en isAuthenticated
-        // y mostrará el navigator correcto según el rol
-      } else {
+      if (!result.success) {
         Alert.alert('Error de autenticación', result.message);
       }
 
     } catch (error) {
-      console.error('❌ Error en login:', error);
       Alert.alert('Error', 'Ocurrió un error inesperado. Por favor intenta de nuevo.');
     } finally {
       setLoading(false);
     }
-  };
-
-  // ========================================
-  // ⚡ LOGIN RÁPIDO (PARA TESTING)
-  // ========================================
-  const quickLogin = (testEmail, testPassword) => {
-    setEmail(testEmail);
-    setPassword(testPassword);
   };
 
   return (
@@ -89,7 +67,6 @@ const LoginScreen = ({ navigation }) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <View style={[styles.logoCircle, { backgroundColor: theme.colors.primary + '20' }]}>
             <Ionicons name="medical" size={48} color={theme.colors.primary} />
@@ -102,9 +79,7 @@ const LoginScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        {/* Formulario */}
         <View style={[styles.form, { backgroundColor: theme.colors.card }]}>
-          {/* Email */}
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Correo electrónico
@@ -130,7 +105,6 @@ const LoginScreen = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Contraseña */}
           <View style={styles.inputContainer}>
             <Text style={[styles.label, { color: theme.colors.text }]}>
               Contraseña
@@ -166,7 +140,6 @@ const LoginScreen = ({ navigation }) => {
             </View>
           </View>
 
-          {/* Botón Login */}
           <TouchableOpacity
             style={[
               styles.button, 
@@ -186,7 +159,6 @@ const LoginScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
-          {/* Link a registro */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: theme.colors.textSecondary }]}>
               ¿No tienes cuenta?{' '}
@@ -201,48 +173,6 @@ const LoginScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Botones de prueba rápida (solo desarrollo) */}
-        {__DEV__ && (
-          <View style={[styles.testSection, { borderColor: theme.colors.warning }]}>
-            <Text style={[styles.testTitle, { color: theme.colors.warning }]}>
-              ⚡ Prueba Rápida (Dev)
-            </Text>
-            
-            <View style={styles.testButtons}>
-              <TouchableOpacity
-                style={[styles.testButton, { backgroundColor: '#9C27B0' }]}
-                onPress={() => quickLogin('admin@consultorio.com', 'Admin2025!')}
-                disabled={loading}
-              >
-                <Ionicons name="shield" size={16} color="#fff" />
-                <Text style={styles.testButtonText}>Admin</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.testButton, { backgroundColor: '#4CAF50' }]}
-                onPress={() => quickLogin('maria.lopez@consultorio.com', 'Pediatria2025')}
-                disabled={loading}
-              >
-                <Ionicons name="medical" size={16} color="#fff" />
-                <Text style={styles.testButtonText}>Doctor</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.testButton, { backgroundColor: '#2196F3' }]}
-                onPress={() => quickLogin('paciente@test.com', 'paciente123')}
-                disabled={loading}
-              >
-                <Ionicons name="person" size={16} color="#fff" />
-                <Text style={styles.testButtonText}>Paciente</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={[styles.testHint, { color: theme.colors.textSecondary }]}>
-              Presiona un botón para llenar los campos, luego "Iniciar Sesión"
-            </Text>
-          </View>
-        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -341,45 +271,6 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  // Estilos para sección de pruebas
-  testSection: {
-    marginTop: 30,
-    padding: 15,
-    borderWidth: 2,
-    borderRadius: 10,
-    borderStyle: 'dashed',
-  },
-  testTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  testButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 10,
-  },
-  testButton: {
-    flex: 1,
-    flexDirection: 'row',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  testButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  testHint: {
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 12,
-    fontStyle: 'italic',
   },
 });
 

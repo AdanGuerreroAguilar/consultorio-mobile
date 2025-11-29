@@ -25,7 +25,6 @@ const DetalleCitaScreen = ({ route, navigation }) => {
 
   const cargarDetalleCita = async () => {
     try {
-      // Obtener todas las citas y encontrar la específica
       const response = await citasAPI.getCitas();
       const citaEncontrada = response.find(c => c.id === citaId);
       setCita(citaEncontrada);

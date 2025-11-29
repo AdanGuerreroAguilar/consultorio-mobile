@@ -18,14 +18,18 @@ import client from "../../api/client";
 const HomeDoctorScreen = ({ navigation }) => {
   const { user } = useAuth();
   const { theme } = useTheme();
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
   const [stats, setStats] = useState({
-    citasHoy: 0,
     citasPendientes: 0,
     totalPacientes: 0,
   });
+
   const [citasProximas, setCitasProximas] = useState([]);
+
+  const normalizarFecha = (f) => (f ? f.replace(" ", "T") : null);
 
   useFocusEffect(
     useCallback(() => {
@@ -37,39 +41,38 @@ const HomeDoctorScreen = ({ navigation }) => {
     if (!refreshing) setLoading(true);
 
     try {
-      // Obtener todas las citas
+      const doctorId = Number(user?.id);
+
       const resCitas = await client.get("/api/citas");
       const todasCitas = resCitas.data || [];
 
-      // Filtrar citas del doctor actual
       const misCitas = todasCitas.filter(
-        (c) => c.doctor_id === user?.id || c.doctor_id === parseInt(user?.id)
+        (c) => Number(c.doctor_id) === doctorId
       );
 
-      // Citas de hoy
-      const hoy = new Date().toISOString().split("T")[0];
-      const citasHoy = misCitas.filter((c) => c.fecha_hora?.startsWith(hoy));
-
-      // Citas pendientes (futuras)
       const ahora = new Date();
-      const pendientes = misCitas.filter(
-        (c) => new Date(c.fecha_hora) >= ahora && c.estado !== "cancelada"
-      );
 
-      // Próximas 5 citas
+      const pendientes = misCitas.filter((c) => {
+        const fecha = new Date(normalizarFecha(c.fecha_hora));
+        return fecha >= ahora && c.estado !== "cancelada";
+      });
+
       const proximas = pendientes
-        .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora))
+        .sort(
+          (a, b) =>
+            new Date(normalizarFecha(a.fecha_hora)) -
+            new Date(normalizarFecha(b.fecha_hora))
+        )
         .slice(0, 5);
 
-      // Total pacientes
       const resPacientes = await client.get("/api/pacientes");
       const totalPacientes = resPacientes.data?.length || 0;
 
       setStats({
-        citasHoy: citasHoy.length,
         citasPendientes: pendientes.length,
         totalPacientes,
       });
+
       setCitasProximas(proximas);
     } catch (error) {
       console.error("Error al cargar datos:", error);
@@ -81,7 +84,7 @@ const HomeDoctorScreen = ({ navigation }) => {
 
   const formatearFecha = (fechaStr) => {
     try {
-      const fecha = new Date(fechaStr);
+      const fecha = new Date(normalizarFecha(fechaStr));
       return fecha.toLocaleDateString("es-MX", {
         weekday: "short",
         day: "numeric",
@@ -96,7 +99,12 @@ const HomeDoctorScreen = ({ navigation }) => {
 
   if (loading && !refreshing) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: theme.colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
@@ -121,6 +129,7 @@ const HomeDoctorScreen = ({ navigation }) => {
         <Text style={styles.greeting}>
           Hola, Dr. {user?.nombre} {user?.apellido}
         </Text>
+
         {user?.especialidad && (
           <Text style={styles.specialty}>{user.especialidad}</Text>
         )}
@@ -128,18 +137,9 @@ const HomeDoctorScreen = ({ navigation }) => {
 
       {/* Stats */}
       <View style={styles.statsContainer}>
-        <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
-          <View style={[styles.statIcon, { backgroundColor: "#2196F320" }]}>
-            <Ionicons name="today" size={24} color="#2196F3" />
-          </View>
-          <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {stats.citasHoy}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-            Citas Hoy
-          </Text>
-        </View>
+        {/*  CUADRO "CITAS HOY" ELIMINADO */}
 
+        {/*  Cuadro de Citas (antes Pendientes) */}
         <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
           <View style={[styles.statIcon, { backgroundColor: "#FFC10720" }]}>
             <Ionicons name="time" size={24} color="#FFC107" />
@@ -148,10 +148,11 @@ const HomeDoctorScreen = ({ navigation }) => {
             {stats.citasPendientes}
           </Text>
           <Text style={[styles.statLabel, { color: theme.colors.textSecondary }]}>
-            Pendientes
+            Citas
           </Text>
         </View>
 
+        {/* Pacientes */}
         <View style={[styles.statCard, { backgroundColor: theme.colors.card }]}>
           <View style={[styles.statIcon, { backgroundColor: "#4CAF5020" }]}>
             <Ionicons name="people" size={24} color="#4CAF50" />
@@ -173,8 +174,14 @@ const HomeDoctorScreen = ({ navigation }) => {
 
         {citasProximas.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: theme.colors.card }]}>
-            <Ionicons name="calendar-outline" size={48} color={theme.colors.textSecondary} />
-            <Text style={[styles.emptyText, { color: theme.colors.textSecondary }]}>
+            <Ionicons
+              name="calendar-outline"
+              size={48}
+              color={theme.colors.textSecondary}
+            />
+            <Text
+              style={[styles.emptyText, { color: theme.colors.textSecondary }]}
+            >
               No tienes citas próximas
             </Text>
           </View>
@@ -191,21 +198,42 @@ const HomeDoctorScreen = ({ navigation }) => {
               }
             >
               <View style={styles.citaHeader}>
-                <Text style={[styles.citaPaciente, { color: theme.colors.text }]}>
+                <Text
+                  style={[styles.citaPaciente, { color: theme.colors.text }]}
+                >
                   {cita.paciente_nombre} {cita.paciente_apellido}
                 </Text>
-                <View style={[styles.estadoBadge, { backgroundColor: "#2196F320" }]}>
+
+                <View
+                  style={[styles.estadoBadge, { backgroundColor: "#2196F320" }]}
+                >
                   <Text style={[styles.estadoText, { color: "#2196F3" }]}>
                     {cita.estado}
                   </Text>
                 </View>
               </View>
-              <Text style={[styles.citaMotivo, { color: theme.colors.textSecondary }]}>
+
+              <Text
+                style={[
+                  styles.citaMotivo,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
                 {cita.motivo}
               </Text>
+
               <View style={styles.citaFecha}>
-                <Ionicons name="calendar-outline" size={16} color={theme.colors.primary} />
-                <Text style={[styles.citaFechaText, { color: theme.colors.primary }]}>
+                <Ionicons
+                  name="calendar-outline"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.citaFechaText,
+                    { color: theme.colors.primary },
+                  ]}
+                >
                   {formatearFecha(cita.fecha_hora)}
                 </Text>
               </View>

@@ -1,6 +1,5 @@
 import React from "react";
 import { ActivityIndicator, View, Text, StyleSheet } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { useAuth } from "../context/AuthContext";
@@ -15,11 +14,13 @@ import AdminNavigator from "./AdminNavigator";
 import DoctorNavigator from "./DoctorNavigator";
 import PacienteNavigator from "./PacienteNavigator";
 
+// Pantalla para subir imágenes médicas
+import SubirImagenScreen from "../screens/doctor/SubirImagenScreen";
+
 const Stack = createNativeStackNavigator();
 
-// ========================================
-// 🔄 PANTALLA DE CARGA
-// ========================================
+//  PANTALLA DE CARGA
+
 const LoadingScreen = () => {
   const { theme } = useTheme();
   
@@ -33,40 +34,22 @@ const LoadingScreen = () => {
   );
 };
 
-// ========================================
-// 🧭 NAVEGADOR PRINCIPAL
-// ========================================
+//  NAVEGADOR PRINCIPAL
+
 export default function AppNavigator() {
   const { user, isAuthenticated, loading } = useAuth();
   const { theme } = useTheme();
 
-  // Mostrar pantalla de carga mientras verifica la sesión
   if (loading) {
     return <LoadingScreen />;
   }
 
-  console.log("🧭 [AppNavigator] Estado actual:");
-  console.log("   - isAuthenticated:", isAuthenticated);
-  console.log("   - user:", user?.nombre, "(", user?.rol, ")");
-
   return (
-    <NavigationContainer
-      theme={{
-        dark: theme.dark,
-        colors: {
-          primary: theme.colors.primary,
-          background: theme.colors.background,
-          card: theme.colors.card,
-          text: theme.colors.text,
-          border: theme.colors.border,
-          notification: theme.colors.primary,
-        },
-      }}
-    >
+    <>
       {!isAuthenticated ? (
-        // ========================================
-        // 🔐 NO AUTENTICADO - Mostrar Auth Stack
-        // ========================================
+
+        //  LOGIN & REGISTRO
+
         <Stack.Navigator 
           screenOptions={{ 
             headerShown: false,
@@ -77,45 +60,31 @@ export default function AppNavigator() {
           <Stack.Screen name="Registro" component={RegistroScreen} />
         </Stack.Navigator>
       ) : (
-        // ========================================
-        // ✅ AUTENTICADO - Mostrar Navigator según rol
-        // ========================================
-        <>
+
+        // NAVEGACIÓN POR TIPO DE USUARIO
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+
           {user?.rol === "admin" && (
-            <>
-              {console.log("🔴 [AppNavigator] Cargando AdminNavigator")}
-              <AdminNavigator />
-            </>
-          )}
-          
-          {user?.rol === "doctor" && (
-            <>
-              {console.log("🟢 [AppNavigator] Cargando DoctorNavigator")}
-              <DoctorNavigator />
-            </>
-          )}
-          
-          {user?.rol === "paciente" && (
-            <>
-              {console.log("🔵 [AppNavigator] Cargando PacienteNavigator")}
-              <PacienteNavigator />
-            </>
+            <Stack.Screen name="Admin" component={AdminNavigator} />
           )}
 
-          {/* Si el rol no es reconocido, mostrar error */}
-          {!["admin", "doctor", "paciente"].includes(user?.rol) && (
-            <View style={[styles.errorContainer, { backgroundColor: theme.colors.background }]}>
-              <Text style={[styles.errorText, { color: theme.colors.danger }]}>
-                Error: Rol de usuario no reconocido
-              </Text>
-              <Text style={[styles.errorSubtext, { color: theme.colors.textSecondary }]}>
-                Rol actual: {user?.rol || "ninguno"}
-              </Text>
-            </View>
+          {user?.rol === "doctor" && (
+            <Stack.Screen name="Doctor" component={DoctorNavigator} />
           )}
-        </>
+
+          {user?.rol === "paciente" && (
+            <Stack.Screen name="Paciente" component={PacienteNavigator} />
+          )}
+
+          <Stack.Screen
+            name="SubirImagen"
+            component={SubirImagenScreen}
+            options={{ headerShown: true, title: "Subir Imagen Médica" }}
+          />
+
+        </Stack.Navigator>
       )}
-    </NavigationContainer>
+    </>
   );
 }
 
@@ -128,21 +97,5 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 15,
     fontSize: 16,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  errorSubtext: {
-    fontSize: 14,
-    marginTop: 10,
-    textAlign: 'center',
   },
 });

@@ -38,7 +38,6 @@ const EditarPerfilScreen = ({ route, navigation }) => {
   };
 
   const handleGuardar = async () => {
-    // Validaciones básicas
     if (!formData.nombre.trim() || !formData.apellido.trim()) {
       Alert.alert('Error', 'Nombre y apellido son obligatorios');
       return;
@@ -53,18 +52,10 @@ const EditarPerfilScreen = ({ route, navigation }) => {
     
     try {
       await pacientesAPI.actualizarPaciente(paciente.id, formData);
-      Alert.alert(
-        'Éxito',
-        'Perfil actualizado correctamente',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      Alert.alert('Éxito', 'Perfil actualizado correctamente', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
     } catch (error) {
-      console.error('Error al actualizar perfil:', error);
       Alert.alert('Error', 'No se pudo actualizar el perfil');
     } finally {
       setLoading(false);
@@ -76,7 +67,6 @@ const EditarPerfilScreen = ({ route, navigation }) => {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       contentContainerStyle={styles.contentContainer}
     >
-      {/* Información Personal */}
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
         Información Personal
       </Text>
@@ -84,13 +74,12 @@ const EditarPerfilScreen = ({ route, navigation }) => {
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Nombre *</Text>
         <TextInput
-          style={[styles.input, { 
-            backgroundColor: theme.colors.card,
-            color: theme.colors.text,
-            borderColor: theme.colors.border 
-          }]}
+          style={[
+            styles.input, 
+            { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }
+          ]}
           value={formData.nombre}
-          onChangeText={(value) => handleInputChange('nombre', value)}
+          onChangeText={(v) => handleInputChange('nombre', v)}
           placeholder="Tu nombre"
           placeholderTextColor={theme.colors.textSecondary}
         />
@@ -99,13 +88,12 @@ const EditarPerfilScreen = ({ route, navigation }) => {
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Apellido *</Text>
         <TextInput
-          style={[styles.input, { 
-            backgroundColor: theme.colors.card,
-            color: theme.colors.text,
-            borderColor: theme.colors.border 
-          }]}
+          style={[
+            styles.input, 
+            { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }
+          ]}
           value={formData.apellido}
-          onChangeText={(value) => handleInputChange('apellido', value)}
+          onChangeText={(v) => handleInputChange('apellido', v)}
           placeholder="Tu apellido"
           placeholderTextColor={theme.colors.textSecondary}
         />
@@ -116,13 +104,12 @@ const EditarPerfilScreen = ({ route, navigation }) => {
           Fecha de Nacimiento (AAAA-MM-DD)
         </Text>
         <TextInput
-          style={[styles.input, { 
-            backgroundColor: theme.colors.card,
-            color: theme.colors.text,
-            borderColor: theme.colors.border 
-          }]}
+          style={[
+            styles.input, 
+            { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }
+          ]}
           value={formData.fecha_nacimiento}
-          onChangeText={(value) => handleInputChange('fecha_nacimiento', value)}
+          onChangeText={(v) => handleInputChange('fecha_nacimiento', v)}
           placeholder="1990-01-15"
           placeholderTextColor={theme.colors.textSecondary}
         />
@@ -130,17 +117,24 @@ const EditarPerfilScreen = ({ route, navigation }) => {
 
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Género</Text>
-        <View style={[styles.pickerContainer, { 
-          backgroundColor: theme.colors.card,
-          borderColor: theme.colors.border 
-        }]}>
+        <View
+          style={[
+            styles.pickerContainer,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border }
+          ]}
+        >
           <Picker
             selectedValue={formData.genero}
-            onValueChange={(value) => handleInputChange('genero', value)}
+            onValueChange={(v) => handleInputChange('genero', v)}
             style={{ color: theme.colors.text }}
           >
             {GENEROS.map((genero) => (
-              <Picker.Item key={genero.value} label={genero.label} value={genero.value} />
+              <Picker.Item 
+                key={genero.value} 
+                label={genero.label} 
+                value={genero.value} 
+                color={theme.colors.text}
+              />
             ))}
           </Picker>
         </View>
@@ -149,13 +143,12 @@ const EditarPerfilScreen = ({ route, navigation }) => {
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Correo Electrónico</Text>
         <TextInput
-          style={[styles.input, { 
-            backgroundColor: theme.colors.card,
-            color: theme.colors.text,
-            borderColor: theme.colors.border 
-          }]}
+          style={[
+            styles.input, 
+            { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }
+          ]}
           value={formData.email}
-          onChangeText={(value) => handleInputChange('email', value)}
+          onChangeText={(v) => handleInputChange('email', v)}
           placeholder="correo@ejemplo.com"
           placeholderTextColor={theme.colors.textSecondary}
           keyboardType="email-address"
@@ -166,13 +159,12 @@ const EditarPerfilScreen = ({ route, navigation }) => {
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Teléfono</Text>
         <TextInput
-          style={[styles.input, { 
-            backgroundColor: theme.colors.card,
-            color: theme.colors.text,
-            borderColor: theme.colors.border 
-          }]}
+          style={[
+            styles.input, 
+            { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }
+          ]}
           value={formData.telefono}
-          onChangeText={(value) => handleInputChange('telefono', value)}
+          onChangeText={(v) => handleInputChange('telefono', v)}
           placeholder="442-123-4567"
           placeholderTextColor={theme.colors.textSecondary}
           keyboardType="phone-pad"
@@ -182,40 +174,45 @@ const EditarPerfilScreen = ({ route, navigation }) => {
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Dirección</Text>
         <TextInput
-          style={[styles.textArea, { 
-            backgroundColor: theme.colors.card,
-            color: theme.colors.text,
-            borderColor: theme.colors.border 
-          }]}
+          style={[
+            styles.textArea, 
+            { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }
+          ]}
           value={formData.direccion}
-          onChangeText={(value) => handleInputChange('direccion', value)}
+          onChangeText={(v) => handleInputChange('direccion', v)}
           placeholder="Calle, número, colonia, ciudad"
           placeholderTextColor={theme.colors.textSecondary}
           multiline
           numberOfLines={3}
-          textAlignVertical="top"
         />
       </View>
 
-      {/* Información Médica */}
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
         Información Médica
       </Text>
 
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Tipo de Sangre</Text>
-        <View style={[styles.pickerContainer, { 
-          backgroundColor: theme.colors.card,
-          borderColor: theme.colors.border 
-        }]}>
+        <View
+          style={[
+            styles.pickerContainer,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border }
+          ]}
+        >
           <Picker
             selectedValue={formData.tipo_sangre}
-            onValueChange={(value) => handleInputChange('tipo_sangre', value)}
+            onValueChange={(v) => handleInputChange('tipo_sangre', v)}
             style={{ color: theme.colors.text }}
           >
-            <Picker.Item label="Seleccionar" value="" />
+            <Picker.Item label="Seleccionar" value="" color={theme.colors.text} />
+
             {TIPOS_SANGRE.map((tipo) => (
-              <Picker.Item key={tipo} label={tipo} value={tipo} />
+              <Picker.Item 
+                key={tipo} 
+                label={tipo} 
+                value={tipo} 
+                color={theme.colors.text}
+              />
             ))}
           </Picker>
         </View>
@@ -224,22 +221,19 @@ const EditarPerfilScreen = ({ route, navigation }) => {
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Alergias</Text>
         <TextInput
-          style={[styles.textArea, { 
-            backgroundColor: theme.colors.card,
-            color: theme.colors.text,
-            borderColor: theme.colors.border 
-          }]}
+          style={[
+            styles.textArea, 
+            { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }
+          ]}
           value={formData.alergias}
-          onChangeText={(value) => handleInputChange('alergias', value)}
+          onChangeText={(v) => handleInputChange('alergias', v)}
           placeholder="Describe tus alergias o medicamentos a los que eres alérgico"
           placeholderTextColor={theme.colors.textSecondary}
           multiline
           numberOfLines={3}
-          textAlignVertical="top"
         />
       </View>
 
-      {/* Contacto de Emergencia */}
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
         Contacto de Emergencia
       </Text>
@@ -247,13 +241,12 @@ const EditarPerfilScreen = ({ route, navigation }) => {
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Nombre del Contacto</Text>
         <TextInput
-          style={[styles.input, { 
-            backgroundColor: theme.colors.card,
-            color: theme.colors.text,
-            borderColor: theme.colors.border 
-          }]}
+          style={[
+            styles.input, 
+            { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }
+          ]}
           value={formData.contacto_emergencia}
-          onChangeText={(value) => handleInputChange('contacto_emergencia', value)}
+          onChangeText={(v) => handleInputChange('contacto_emergencia', v)}
           placeholder="Nombre completo"
           placeholderTextColor={theme.colors.textSecondary}
         />
@@ -262,20 +255,18 @@ const EditarPerfilScreen = ({ route, navigation }) => {
       <View style={styles.inputContainer}>
         <Text style={[styles.label, { color: theme.colors.text }]}>Teléfono de Emergencia</Text>
         <TextInput
-          style={[styles.input, { 
-            backgroundColor: theme.colors.card,
-            color: theme.colors.text,
-            borderColor: theme.colors.border 
-          }]}
+          style={[
+            styles.input, 
+            { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }
+          ]}
           value={formData.telefono_emergencia}
-          onChangeText={(value) => handleInputChange('telefono_emergencia', value)}
+          onChangeText={(v) => handleInputChange('telefono_emergencia', v)}
           placeholder="442-123-4567"
           placeholderTextColor={theme.colors.textSecondary}
           keyboardType="phone-pad"
         />
       </View>
 
-      {/* Botones */}
       <TouchableOpacity
         style={[styles.button, { backgroundColor: theme.colors.primary }]}
         onPress={handleGuardar}
@@ -304,70 +295,18 @@ const EditarPerfilScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontSize: 16,
-  },
-  textArea: {
-    minHeight: 80,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  button: {
-    height: 50,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    height: 50,
-    borderRadius: 10,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  container: { flex: 1 },
+  contentContainer: { padding: 20 },
+  sectionTitle: { fontSize: 20, fontWeight: 'bold', marginTop: 10, marginBottom: 20 },
+  inputContainer: { marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
+  input: { height: 50, borderWidth: 1, borderRadius: 10, paddingHorizontal: 15, fontSize: 16 },
+  textArea: { minHeight: 80, borderWidth: 1, borderRadius: 10, paddingHorizontal: 15, paddingVertical: 12, fontSize: 16 },
+  pickerContainer: { borderWidth: 1, borderRadius: 10, overflow: 'hidden' },
+  button: { height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  cancelButton: { height: 50, borderRadius: 10, borderWidth: 1, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  cancelButtonText: { fontSize: 16, fontWeight: '600' },
 });
 
 export default EditarPerfilScreen;

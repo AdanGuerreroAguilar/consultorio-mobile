@@ -15,12 +15,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import client from "../../api/client";
-import { useNavigation } from "@react-navigation/native";  // ✅ AGREGADO
 
 const PerfilScreen = () => {
   const { theme, isDark, toggleTheme } = useTheme();
   const { user, logout, updateUser } = useAuth();
-  const navigation = useNavigation();   // ✅ AGREGADO
 
   const [editando, setEditando] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,14 +39,12 @@ const PerfilScreen = () => {
     setLoading(true);
 
     try {
-      // Llamar directamente al endpoint
       await client.put("/api/perfil", {
         nombre: nombre.trim(),
         apellido: apellido.trim(),
         telefono: telefono.trim() || null,
       });
 
-      // Actualizar el contexto
       await updateUser({
         nombre: nombre.trim(),
         apellido: apellido.trim(),
@@ -66,7 +62,7 @@ const PerfilScreen = () => {
   };
 
   // ============================================
-  // CERRAR SESIÓN
+  // CERRAR SESIÓN (CORREGIDO)
   // ============================================
   const handleLogout = () => {
     Alert.alert(
@@ -78,16 +74,12 @@ const PerfilScreen = () => {
           text: "Sí, salir",
           style: "destructive",
           onPress: async () => {
-            console.log("🔓 Usuario presionó logout...");
             try {
               await logout();
-              console.log("✅ Logout ejecutado");
 
-              // 🔥 ÚNICA LÍNEA QUE FALTABA
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "Login" }],
-              });
+              // ❗ YA NO usamos navigate().
+              // Cuando logout() pone user = null,
+              // AppNavigator redirige automáticamente a Login.
 
             } catch (error) {
               console.log("❌ Error en logout:", error);
@@ -141,7 +133,7 @@ const PerfilScreen = () => {
           </Text>
         </View>
 
-        {/* BOTÓN EDITAR/CANCELAR */}
+        {/* BOTÓN EDITAR / CANCELAR */}
         {!editando ? (
           <TouchableOpacity
             style={[styles.editButton, { backgroundColor: theme.colors.primary }]}
@@ -178,8 +170,6 @@ const PerfilScreen = () => {
                 style={[styles.input, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
                 value={nombre}
                 onChangeText={setNombre}
-                placeholder="Tu nombre"
-                placeholderTextColor={theme.colors.textSecondary}
               />
             ) : (
               <Text style={[styles.value, { color: theme.colors.text }]}>{nombre}</Text>
@@ -193,8 +183,6 @@ const PerfilScreen = () => {
                 style={[styles.input, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
                 value={apellido}
                 onChangeText={setApellido}
-                placeholder="Tu apellido"
-                placeholderTextColor={theme.colors.textSecondary}
               />
             ) : (
               <Text style={[styles.value, { color: theme.colors.text }]}>{apellido}</Text>
@@ -208,14 +196,10 @@ const PerfilScreen = () => {
                 style={[styles.input, { backgroundColor: theme.colors.background, color: theme.colors.text, borderColor: theme.colors.border }]}
                 value={telefono}
                 onChangeText={setTelefono}
-                placeholder="Tu teléfono"
-                placeholderTextColor={theme.colors.textSecondary}
                 keyboardType="phone-pad"
               />
             ) : (
-              <Text style={[styles.value, { color: theme.colors.text }]}>
-                {telefono || "No especificado"}
-              </Text>
+              <Text style={[styles.value, { color: theme.colors.text }]}>{telefono || "No especificado"}</Text>
             )}
           </View>
 
@@ -286,6 +270,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 20 },
   header: { alignItems: "center", marginBottom: 25 },
+
   avatar: {
     width: 100,
     height: 100,
@@ -294,10 +279,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 15,
   },
+
   userName: { fontSize: 24, fontWeight: "bold", marginBottom: 8 },
   rolBadge: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 15, marginBottom: 8 },
   rolText: { fontSize: 12, fontWeight: "700" },
   userEmail: { fontSize: 14 },
+
   editButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -308,6 +295,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   editButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+
   cancelEditButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -318,17 +306,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cancelEditButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+
   section: { borderRadius: 15, padding: 20, marginBottom: 20 },
   sectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 20 },
+
   field: { marginBottom: 20 },
   label: { fontSize: 12, marginBottom: 6 },
   value: { fontSize: 16, fontWeight: "500" },
-  input: { 
-    padding: 12, 
-    borderRadius: 10, 
+
+  input: {
+    padding: 12,
+    borderRadius: 10,
     fontSize: 16,
     borderWidth: 1,
   },
+
   saveButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -339,6 +331,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   saveButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -346,6 +339,7 @@ const styles = StyleSheet.create({
   },
   settingInfo: { flexDirection: "row", alignItems: "center", gap: 12 },
   settingText: { fontSize: 16 },
+
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -356,5 +350,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logoutText: { fontSize: 16, fontWeight: "600", color: "#F44336" },
+
   version: { textAlign: "center", marginTop: 20, marginBottom: 30, fontSize: 12 },
 });

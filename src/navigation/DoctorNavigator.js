@@ -1,5 +1,3 @@
-// navigation/DoctorNavigator.js
-
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -12,9 +10,10 @@ import ListaPacientesScreen from "../screens/doctor/ListaPacientesScreen";
 import FichaPacienteScreen from "../screens/doctor/FichaPacienteScreen";
 import EditarPacienteScreen from "../screens/doctor/EditarPacienteScreen";
 import RegistrarSignosScreen from "../screens/doctor/RegistrarSignosScreen";
-
-// ✅ RUTA RELATIVA CORRECTA (NO ABSOLUTA)
 import CrearNotaScreen from "../screens/doctor/CrearNotaScreen";
+
+// Subir imágenes médicas 
+import SubirImagenScreen from "../screens/doctor/SubirImagenScreen";
 
 // Perfil compartido
 import PerfilScreen from "../screens/shared/PerfilScreen";
@@ -22,9 +21,9 @@ import PerfilScreen from "../screens/shared/PerfilScreen";
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-// ------------------------------
+
 // HOME DEL DOCTOR
-// ------------------------------
+
 function DashboardStack() {
   return (
     <Stack.Navigator>
@@ -37,9 +36,8 @@ function DashboardStack() {
   );
 }
 
-// ------------------------------
 // PACIENTES DEL DOCTOR
-// ------------------------------
+
 function PacientesStack() {
   return (
     <Stack.Navigator>
@@ -67,19 +65,24 @@ function PacientesStack() {
         options={{ title: "Registrar Signos Vitales" }}
       />
 
-      {/* ✅ ESTA RUTA YA ES CORRECTA */}
       <Stack.Screen
         name="CrearNota"
         component={CrearNotaScreen}
         options={{ title: "Crear Nota Médica" }}
       />
+
+      <Stack.Screen
+        name="SubirImagen"
+        component={SubirImagenScreen}
+        options={{ title: "Adjuntar Imagen" }}
+      />
     </Stack.Navigator>
   );
 }
 
-// ------------------------------
+
 // PERFIL DEL DOCTOR
-// ------------------------------
+
 function PerfilStack() {
   return (
     <Stack.Navigator>
@@ -92,9 +95,9 @@ function PerfilStack() {
   );
 }
 
-// ------------------------------
+
 // NAVEGADOR PRINCIPAL DEL DOCTOR
-// ------------------------------
+
 export default function DoctorNavigator() {
   const { theme } = useTheme();
 

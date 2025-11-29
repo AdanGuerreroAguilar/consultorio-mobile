@@ -162,6 +162,7 @@ const FichaPacienteScreen = ({ route, navigation }) => {
         </View>
       </View>
 
+      {/* Información Médica */}
       <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
         <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
           Información Médica
@@ -193,46 +194,8 @@ const FichaPacienteScreen = ({ route, navigation }) => {
           </View>
         </View>
       </View>
-
-      {(paciente.contacto_emergencia || paciente.telefono_emergencia) && (
-        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-            Contacto de Emergencia
-          </Text>
-
-          <View style={styles.infoRow}>
-            <Ionicons name="person-outline" size={20} color={theme.colors.danger} />
-            <View style={styles.infoContent}>
-              <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-                Nombre
-              </Text>
-              <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                {paciente.contacto_emergencia || 'No especificado'}
-              </Text>
-            </View>
-          </View>
-
-          {paciente.telefono_emergencia && (
-            <>
-              <View style={styles.divider} />
-              <View style={styles.infoRow}>
-                <Ionicons name="call-outline" size={20} color={theme.colors.danger} />
-                <View style={styles.infoContent}>
-                  <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>
-                    Teléfono
-                  </Text>
-                  <Text style={[styles.infoValue, { color: theme.colors.text }]}>
-                    {paciente.telefono_emergencia}
-                  </Text>
-                </View>
-              </View>
-            </>
-          )}
-        </View>
-      )}
     </ScrollView>
   );
-
   const renderCitas = () => (
     <ScrollView style={styles.tabContent}>
       {historial.citas.length === 0 ? (
@@ -288,6 +251,7 @@ const FichaPacienteScreen = ({ route, navigation }) => {
             <Text style={[styles.notaContenido, { color: theme.colors.text }]} numberOfLines={3}>
               {nota.contenido}
             </Text>
+
             {nota.diagnostico && (
               <View style={styles.diagnosticoBox}>
                 <Text style={[styles.diagnosticoLabel, { color: theme.colors.warning }]}>
@@ -319,6 +283,7 @@ const FichaPacienteScreen = ({ route, navigation }) => {
             <Text style={[styles.signoFecha, { color: theme.colors.text }]}>
               {formatearFecha(signo.fecha_registro)}
             </Text>
+
             <View style={styles.signosGrid}>
               {signo.peso && (
                 <View style={styles.signoItem}>
@@ -330,6 +295,7 @@ const FichaPacienteScreen = ({ route, navigation }) => {
                   </Text>
                 </View>
               )}
+
               {signo.presion_sistolica && (
                 <View style={styles.signoItem}>
                   <Text style={[styles.signoLabel, { color: theme.colors.textSecondary }]}>
@@ -340,6 +306,7 @@ const FichaPacienteScreen = ({ route, navigation }) => {
                   </Text>
                 </View>
               )}
+
               {signo.temperatura && (
                 <View style={styles.signoItem}>
                   <Text style={[styles.signoLabel, { color: theme.colors.textSecondary }]}>
@@ -350,6 +317,7 @@ const FichaPacienteScreen = ({ route, navigation }) => {
                   </Text>
                 </View>
               )}
+
               {signo.frecuencia_cardiaca && (
                 <View style={styles.signoItem}>
                   <Text style={[styles.signoLabel, { color: theme.colors.textSecondary }]}>
@@ -369,7 +337,8 @@ const FichaPacienteScreen = ({ route, navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
+      
+      {/* HEADER */}
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.avatarLarge}>
           <Ionicons name="person" size={48} color="#FFFFFF" />
@@ -380,34 +349,55 @@ const FichaPacienteScreen = ({ route, navigation }) => {
         {edad && <Text style={styles.edadHeader}>{edad} años</Text>}
       </View>
 
-      {/* Botones de acción */}
+      {/* ACCIONES (INCLUYE IMAGEN) */}
       <View style={styles.actionsBar}>
+        
+        {/* SIGNOS */}
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
           onPress={() => navigation.navigate('RegistrarSignos', { pacienteId })}
         >
           <Ionicons name="fitness" size={20} color="#FFFFFF" />
-          <Text style={styles.actionBtnText}>Signos</Text>
+          <Text style={[styles.actionBtnText, { color: "#FFFFFF" }]}>
+            Signos
+          </Text>
         </TouchableOpacity>
 
+        {/* NOTA MÉDICA */}
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: theme.colors.success }]}
+          style={[styles.actionBtn, { backgroundColor: theme.colors.card }]}
           onPress={() => navigation.navigate('CrearNota', { pacienteId })}
         >
-          <Ionicons name="document-text" size={20} color="#FFFFFF" />
-          <Text style={styles.actionBtnText}>Nota</Text>
+          <Ionicons name="document-text" size={20} color={theme.colors.text} />
+          <Text style={[styles.actionBtnText, { color: theme.colors.text }]}>
+            Nota
+          </Text>
         </TouchableOpacity>
 
+        {/* IMAGEN (nuevo botón) */}
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: theme.colors.warning }]}
+          style={[styles.actionBtn, { backgroundColor: theme.colors.card }]}
+          onPress={() => navigation.navigate('SubirImagen', { pacienteId })}
+        >
+          <Ionicons name="image" size={20} color={theme.colors.text} />
+          <Text style={[styles.actionBtnText, { color: theme.colors.text }]}>
+            Imagen
+          </Text>
+        </TouchableOpacity>
+
+        {/* EDITAR */}
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: theme.colors.card }]}
           onPress={() => navigation.navigate('EditarPaciente', { pacienteId })}
         >
-          <Ionicons name="create" size={20} color="#FFFFFF" />
-          <Text style={styles.actionBtnText}>Editar</Text>
+          <Ionicons name="create" size={20} color={theme.colors.text} />
+          <Text style={[styles.actionBtnText, { color: theme.colors.text }]}>
+            Editar
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
+      {/* TABS */}
       <View style={[styles.tabs, { backgroundColor: theme.colors.card }]}>
         <TouchableOpacity
           style={[styles.tab, tab === 'info' && { borderBottomColor: theme.colors.primary }]}
@@ -446,7 +436,7 @@ const FichaPacienteScreen = ({ route, navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Contenido */}
+      {/* CONTENIDO */}
       {tab === 'info' && renderInfo()}
       {tab === 'citas' && renderCitas()}
       {tab === 'notas' && renderNotas()}
@@ -455,25 +445,16 @@ const FichaPacienteScreen = ({ route, navigation }) => {
   );
 };
 
+/* ============================
+   ESTILOS
+=============================== */
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    marginTop: 15,
-  },
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  errorText: { fontSize: 18, marginTop: 15 },
+
   header: {
     paddingTop: 60,
     paddingBottom: 30,
@@ -499,6 +480,7 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     marginTop: 4,
   },
+
   actionsBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -514,11 +496,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 8,
   },
-  actionBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  actionBtnText: { fontSize: 14, fontWeight: '600' },
+
   tabs: {
     flexDirection: 'row',
     elevation: 2,
@@ -534,14 +513,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: 'transparent',
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  tabContent: {
-    flex: 1,
-    padding: 15,
-  },
+  tabText: { fontSize: 14, fontWeight: '600' },
+
+  tabContent: { flex: 1, padding: 15 },
+
   card: {
     padding: 15,
     borderRadius: 15,
@@ -552,119 +527,51 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  infoContent: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  infoLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 15,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 16,
-    marginTop: 15,
-  },
-  citaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  citaFecha: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  citaMotivo: {
-    fontSize: 14,
-    marginBottom: 6,
-  },
-  citaDoctor: {
-    fontSize: 14,
-  },
-  notaTitulo: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  notaFecha: {
-    fontSize: 12,
-    marginBottom: 10,
-  },
-  notaContenido: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  cardTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
+
+  infoRow: { flexDirection: 'row', alignItems: 'center' },
+  infoContent: { flex: 1, marginLeft: 15 },
+
+  infoLabel: { fontSize: 12, marginBottom: 4 },
+  infoValue: { fontSize: 16, fontWeight: '500' },
+  divider: { height: 1, backgroundColor: '#E0E0E0', marginVertical: 15 },
+
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
+  emptyText: { fontSize: 16, marginTop: 15 },
+
+  citaHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  citaFecha: { fontSize: 16, fontWeight: '600' },
+
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  badgeText: { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
+
+  citaMotivo: { fontSize: 14, marginBottom: 6 },
+  citaDoctor: { fontSize: 14 },
+
+  notaTitulo: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
+  notaFecha: { fontSize: 12, marginBottom: 10 },
+  notaContenido: { fontSize: 14, lineHeight: 20 },
+
   diagnosticoBox: {
     marginTop: 10,
     padding: 10,
     backgroundColor: 'rgba(255, 159, 10, 0.1)',
     borderRadius: 8,
   },
-  diagnosticoLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  diagnosticoText: {
-    fontSize: 14,
-  },
-  signoFecha: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 15,
-  },
-  signosGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
+  diagnosticoLabel: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
+  diagnosticoText: { fontSize: 14 },
+
+  signoFecha: { fontSize: 16, fontWeight: '600', marginBottom: 15 },
+  signosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+
   signoItem: {
     width: '48%',
     padding: 12,
     backgroundColor: 'rgba(0, 122, 255, 0.05)',
     borderRadius: 10,
   },
-  signoLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  signoValue: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
+  signoLabel: { fontSize: 12, marginBottom: 4 },
+  signoValue: { fontSize: 18, fontWeight: '600' },
 });
 
 export default FichaPacienteScreen;

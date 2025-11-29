@@ -23,12 +23,12 @@ const DashboardAdminScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
   const [stats, setStats] = useState({
-    total_usuarios: 0,
+    total_admins: 0,          // 🔧 MODIFICADO: ahora es admins, no usuarios
     total_doctores: 0,
     total_pacientes: 0,
     citas_hoy: 0,
-    citas_pendientes: 0,
   });
 
   useFocusEffect(
@@ -41,20 +41,28 @@ const DashboardAdminScreen = ({ navigation }) => {
     if (!refreshing) setLoading(true);
 
     try {
+      // Obtener estadísticas del backend
       const response = await client.get("/api/stats");
-      console.log("📊 Stats:", response.data);
-      setStats(response.data);
+      console.log(" Stats:", response.data);
+
+      // 🔧 Obtener usuarios y filtrar admins
+      const resUsers = await client.get("/api/usuarios");
+      const adminsCount = resUsers.data.filter(u => u.rol === "admin").length;
+
+      setStats({
+        total_admins: adminsCount,       // 🔧 SOLO admins
+        total_doctores: response.data.total_doctores,
+        total_pacientes: response.data.total_pacientes,
+        citas_hoy: response.data.citas_hoy,
+      });
     } catch (error) {
-      console.error("❌ Error stats:", error);
+      console.error(" Error stats:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  // ============================================
-  // 🚪 CERRAR SESIÓN - FUNCIONAL
-  // ============================================
   const handleLogout = () => {
     Alert.alert(
       "Cerrar Sesión",
@@ -65,22 +73,12 @@ const DashboardAdminScreen = ({ navigation }) => {
           text: "Sí, salir",
           style: "destructive",
           onPress: async () => {
-            console.log("🔓 Cerrando sesión desde Dashboard...");
             try {
-              // Limpiar AsyncStorage directamente
               await AsyncStorage.removeItem("token");
               await AsyncStorage.removeItem("user");
-              
-              // Limpiar token de axios
               setAuthToken(null);
-              
-              // Llamar logout del contexto
               await logout();
-              
-              console.log("✅ Sesión cerrada");
             } catch (error) {
-              console.log("❌ Error:", error);
-              // Forzar logout aunque falle
               await AsyncStorage.clear();
               setAuthToken(null);
               await logout();
@@ -127,39 +125,40 @@ const DashboardAdminScreen = ({ navigation }) => {
         />
       }
     >
-      {/* Header con botón de logout */}
+      {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.primary }]}>
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.greeting}>Hola, {user?.nombre || "Admin"}</Text>
             <Text style={styles.subtitle}>Panel de Administración</Text>
           </View>
-          
-          {/* 🚪 BOTÓN LOGOUT EN HEADER */}
-          <TouchableOpacity
-            style={styles.logoutHeaderBtn}
-            onPress={handleLogout}
-          >
+
+          {/* Logout */}
+          <TouchableOpacity style={styles.logoutHeaderBtn} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={28} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Stats Grid */}
+      {/* Stats */}
       <View style={styles.statsGrid}>
+        {/* 🔧 Ahora muestra SOLO admins */}
         <StatCard
           icon="people"
-          label="Usuarios"
-          value={stats.total_usuarios}
+          label="Admins"
+          value={stats.total_admins}
           color="#2196F3"
-          onPress={() => navigation.navigate("Usuarios")}
+          onPress={() => navigation.navigate("Usuarios", { rol: "admin" })}
         />
+
         <StatCard
           icon="medical"
           label="Doctores"
           value={stats.total_doctores}
           color="#4CAF50"
+          onPress={() => navigation.navigate("Usuarios", { rol: "doctor" })}   // 🔧 SOLO doctores
         />
+
         <StatCard
           icon="person"
           label="Pacientes"
@@ -167,6 +166,7 @@ const DashboardAdminScreen = ({ navigation }) => {
           color="#9C27B0"
           onPress={() => navigation.navigate("Pacientes")}
         />
+
         <StatCard
           icon="today"
           label="Citas Hoy"
@@ -174,16 +174,11 @@ const DashboardAdminScreen = ({ navigation }) => {
           color="#FF9800"
           onPress={() => navigation.navigate("Citas")}
         />
-        <StatCard
-          icon="time"
-          label="Pendientes"
-          value={stats.citas_pendientes}
-          color="#F44336"
-          onPress={() => navigation.navigate("Citas")}
-        />
+
+        {/* ❌🔧 Eliminado totalmente el recuadro de “Pendientes” */}
       </View>
 
-      {/* Acciones rápidas */}
+      {/* Acciones Rápidas */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
           Acciones Rápidas
@@ -244,12 +239,9 @@ const DashboardAdminScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Botón de cerrar sesión grande (adicional) */}
+      {/* Logout grande */}
       <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={24} color="#F44336" />
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
@@ -263,6 +255,7 @@ const DashboardAdminScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+
   header: { padding: 25, paddingTop: 15 },
   headerContent: {
     flexDirection: "row",
@@ -279,12 +272,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     padding: 10,
     gap: 10,
   },
+
   statCard: {
     width: "47%",
     padding: 20,
@@ -303,8 +298,10 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 28, fontWeight: "bold" },
   statLabel: { fontSize: 14, marginTop: 4 },
+
   section: { padding: 15 },
   sectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 15 },
+
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -323,6 +320,7 @@ const styles = StyleSheet.create({
   actionContent: { flex: 1, marginLeft: 15 },
   actionTitle: { fontSize: 16, fontWeight: "600" },
   actionSubtitle: { fontSize: 13, marginTop: 2 },
+
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",

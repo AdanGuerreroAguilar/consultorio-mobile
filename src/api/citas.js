@@ -1,4 +1,3 @@
-// api/citas.js
 import client from "./client";
 
 export const citasAPI = {

@@ -45,7 +45,7 @@ const GestionCitasScreen = ({ navigation }) => {
     }
   };
 
-  // ✅ CANCELAR CITA - FUNCIONAL
+  // CANCELAR CITA
   const handleCancelar = (cita) => {
     Alert.alert(
       "Cancelar Cita",
@@ -57,17 +57,17 @@ const GestionCitasScreen = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             try {
-              console.log("🔄 Cancelando cita ID:", cita.id);
+              console.log(" Cancelando cita ID:", cita.id);
               
               const response = await client.put(`/api/citas/${cita.id}`, { 
                 estado: "cancelada" 
               });
               
-              console.log("✅ Respuesta:", response.data);
+              console.log(" Respuesta:", response.data);
               Alert.alert("Éxito", "Cita cancelada correctamente");
               cargarCitas();
             } catch (error) {
-              console.error("❌ Error cancelando:", error.response?.data || error.message);
+              console.error(" Error cancelando:", error.response?.data || error.message);
               Alert.alert("Error", error.response?.data?.detail || "No se pudo cancelar la cita");
             }
           },
@@ -76,7 +76,7 @@ const GestionCitasScreen = ({ navigation }) => {
     );
   };
 
-  // ✅ ELIMINAR CITA - FUNCIONAL
+  // ELIMINAR CITA
   const handleEliminar = (cita) => {
     Alert.alert(
       "Eliminar Cita",
@@ -92,11 +92,11 @@ const GestionCitasScreen = ({ navigation }) => {
               
               const response = await client.delete(`/api/citas/${cita.id}`);
               
-              console.log("✅ Respuesta:", response.data);
+              console.log(" Respuesta:", response.data);
               Alert.alert("Éxito", "Cita eliminada correctamente");
               cargarCitas();
             } catch (error) {
-              console.error("❌ Error eliminando:", error.response?.data || error.message);
+              console.error(" Error eliminando:", error.response?.data || error.message);
               Alert.alert("Error", error.response?.data?.detail || "No se pudo eliminar la cita");
             }
           },

@@ -36,7 +36,7 @@ const GestionUsuariosScreen = ({ navigation }) => {
       const response = await client.get("/api/usuarios");
       const todosUsuarios = response.data || [];
       
-      // ✅ FILTRAR: Solo mostrar admin y doctor (NO pacientes)
+      // FILTRAR: Solo mostrar admin y doctor (NO pacientes)
       const usuariosFiltrados = todosUsuarios.filter(
         (u) => u.rol === "admin" || u.rol === "doctor"
       );
@@ -44,7 +44,7 @@ const GestionUsuariosScreen = ({ navigation }) => {
       console.log("👥 Usuarios (admin/doctor):", usuariosFiltrados.length);
       setUsuarios(usuariosFiltrados);
     } catch (error) {
-      console.error("❌ Error:", error);
+      console.error(" Error:", error);
       Alert.alert("Error", "No se pudieron cargar los usuarios");
     } finally {
       setLoading(false);
@@ -52,7 +52,7 @@ const GestionUsuariosScreen = ({ navigation }) => {
     }
   };
 
-  // ✅ ELIMINAR USUARIO - FUNCIONAL
+  //  ELIMINAR USUARIO
   const handleEliminar = (usuario) => {
     Alert.alert(
       "Eliminar Usuario",
@@ -68,11 +68,11 @@ const GestionUsuariosScreen = ({ navigation }) => {
               
               const response = await client.delete(`/api/usuarios/${usuario.id}`);
               
-              console.log("✅ Respuesta:", response.data);
+              console.log(" Respuesta:", response.data);
               Alert.alert("Éxito", "Usuario eliminado correctamente");
               cargarUsuarios();
             } catch (error) {
-              console.error("❌ Error eliminando:", error.response?.data || error.message);
+              console.error(" Error eliminando:", error.response?.data || error.message);
               Alert.alert("Error", error.response?.data?.detail || "No se pudo eliminar el usuario");
             }
           },

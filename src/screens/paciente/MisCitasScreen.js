@@ -34,13 +34,13 @@ const MisCitasScreen = ({ navigation }) => {
     if (!refreshing) setLoading(true);
     
     try {
-      console.log("👤 Usuario:", user?.email, "| paciente_id:", user?.paciente_id);
+      console.log(" Usuario:", user?.email, "| paciente_id:", user?.paciente_id);
 
       // Obtener todas las citas
       const response = await client.get("/api/citas");
       const todasLasCitas = response.data || [];
 
-      console.log("📋 Total citas en BD:", todasLasCitas.length);
+      console.log(" Total citas en BD:", todasLasCitas.length);
 
       // Filtrar las citas del paciente actual
       const pacienteId = user?.paciente_id;
@@ -52,9 +52,9 @@ const MisCitasScreen = ({ navigation }) => {
         );
       }
 
-      console.log("📌 Mis citas:", misCitas.length);
+      console.log(" Mis citas:", misCitas.length);
 
-      // Aplicar filtro de tiempo
+
       const ahora = new Date();
       let citasFiltradas = misCitas;
 
@@ -76,7 +76,7 @@ const MisCitasScreen = ({ navigation }) => {
 
       setCitas(citasFiltradas);
     } catch (error) {
-      console.error("❌ Error al cargar citas:", error.response?.data || error.message);
+      console.error(" Error al cargar citas:", error.response?.data || error.message);
       if (error.response?.status !== 401) {
         Alert.alert("Error", "No se pudieron cargar las citas");
       }

@@ -35,10 +35,9 @@ const MiPerfilScreen = ({ navigation }) => {
 
     try {
       const pacienteId = user?.paciente_id;
-      console.log("🆔 Cargando perfil paciente ID:", pacienteId);
+      console.log(" Cargando perfil paciente ID:", pacienteId);
 
       if (!pacienteId) {
-        // Usar datos del usuario directamente
         setPaciente({
           nombre: user?.nombre || "Usuario",
           apellido: user?.apellido || "",
@@ -50,7 +49,7 @@ const MiPerfilScreen = ({ navigation }) => {
 
       try {
         const response = await client.get(`/api/pacientes/${pacienteId}`);
-        console.log("✅ Datos del paciente:", response.data);
+        console.log(" Datos del paciente:", response.data);
         setPaciente(response.data);
       } catch (apiError) {
         console.log("⚠️ Usando datos locales");
@@ -63,7 +62,7 @@ const MiPerfilScreen = ({ navigation }) => {
         });
       }
     } catch (error) {
-      console.error("❌ Error:", error);
+      console.error(" Error:", error);
       setError("No se pudo cargar el perfil");
       setPaciente({
         nombre: user?.nombre || "Usuario",
@@ -75,9 +74,9 @@ const MiPerfilScreen = ({ navigation }) => {
     }
   };
 
-  // ============================================
-  // 🔴 LOGOUT FUNCIONAL
-  // ============================================
+
+  //  LOGOUT FUNCIONAL
+
   const handleLogout = () => {
     Alert.alert(
       "Cerrar Sesión",
@@ -88,10 +87,10 @@ const MiPerfilScreen = ({ navigation }) => {
           text: "Cerrar Sesión",
           style: "destructive",
           onPress: async () => {
-            console.log("🔓 Ejecutando logout...");
+            console.log(" Ejecutando logout...");
             await logout();
-            console.log("✅ Logout completado");
-            // La navegación se maneja automáticamente por AuthContext
+            console.log(" Logout completado");
+
           },
         },
       ]
@@ -268,9 +267,8 @@ const MiPerfilScreen = ({ navigation }) => {
           <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
         </TouchableOpacity>
 
-        {/* ============================================ */}
-        {/* 🔴 BOTÓN DE CERRAR SESIÓN */}
-        {/* ============================================ */}
+
+        {/*  BOTÓN DE CERRAR SESIÓN */}
         <TouchableOpacity
           style={[styles.logoutButton, { backgroundColor: "#F4433615" }]}
           onPress={handleLogout}

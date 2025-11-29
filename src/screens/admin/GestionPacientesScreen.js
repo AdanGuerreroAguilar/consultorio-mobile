@@ -33,12 +33,12 @@ const GestionPacientesScreen = ({ navigation }) => {
     if (!refreshing) setLoading(true);
 
     try {
-      // ✅ USAR ENDPOINT DE PACIENTES, NO USUARIOS
+      // USAR ENDPOINT DE PACIENTES, NO USUARIOS
       const response = await client.get("/api/pacientes");
       console.log("👥 Pacientes cargados:", response.data?.length || 0);
       setPacientes(response.data || []);
     } catch (error) {
-      console.error("❌ Error:", error);
+      console.error(" Error:", error);
       Alert.alert("Error", "No se pudieron cargar los pacientes");
     } finally {
       setLoading(false);
@@ -46,7 +46,7 @@ const GestionPacientesScreen = ({ navigation }) => {
     }
   };
 
-  // ✅ ELIMINAR PACIENTE - FUNCIONAL
+  //  ELIMINAR PACIENTE 
   const handleEliminar = (paciente) => {
     Alert.alert(
       "Eliminar Paciente",
@@ -62,11 +62,11 @@ const GestionPacientesScreen = ({ navigation }) => {
               
               const response = await client.delete(`/api/pacientes/${paciente.id}`);
               
-              console.log("✅ Respuesta:", response.data);
+              console.log(" Respuesta:", response.data);
               Alert.alert("Éxito", "Paciente eliminado correctamente");
               cargarPacientes();
             } catch (error) {
-              console.error("❌ Error eliminando:", error.response?.data || error.message);
+              console.error(" Error eliminando:", error.response?.data || error.message);
               Alert.alert("Error", error.response?.data?.detail || "No se pudo eliminar el paciente");
             }
           },

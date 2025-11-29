@@ -1,4 +1,3 @@
-// api/pacientes.js
 import client from "./client";
 
 export const pacientesAPI = {

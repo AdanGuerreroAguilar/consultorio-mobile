@@ -122,6 +122,7 @@ const ListaPacientesScreen = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      
       {/* Buscador */}
       <View style={styles.searchContainer}>
         <View style={[styles.searchBox, { backgroundColor: theme.colors.card }]}>
@@ -159,25 +160,13 @@ const ListaPacientesScreen = ({ navigation }) => {
           </View>
         }
       />
-
-      {/* Botón flotante */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        onPress={() => navigation.navigate('CrearPaciente')}
-      >
-        <Ionicons name="add" size={28} color="#FFFFFF" />
-      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  searchContainer: {
-    padding: 15,
-  },
+  container: { flex: 1 },
+  searchContainer: { padding: 15 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -186,27 +175,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 10,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-  },
-  lista: {
-    padding: 15,
-  },
+  searchInput: { flex: 1, fontSize: 16 },
+  lista: { padding: 15 },
+
   pacienteCard: {
     borderRadius: 15,
     padding: 15,
     marginBottom: 10,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
-  pacienteHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  pacienteHeader: { flexDirection: 'row', alignItems: 'center' },
   avatar: {
     width: 50,
     height: 50,
@@ -215,47 +193,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 15,
   },
-  pacienteInfo: {
-    flex: 1,
-  },
-  pacienteNombre: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 6,
-  },
-  infoText: {
-    fontSize: 14,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 16,
-    marginTop: 15,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
+  pacienteInfo: { flex: 1 },
+  pacienteNombre: { fontSize: 18, fontWeight: '600', marginBottom: 6 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
+  infoText: { fontSize: 14 },
+
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
+  emptyText: { fontSize: 16, marginTop: 15 },
 });
 
 export default ListaPacientesScreen;

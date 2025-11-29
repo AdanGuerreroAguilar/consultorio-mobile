@@ -1,4 +1,4 @@
-// navigation/AdminNavigator.js
+
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -24,9 +24,7 @@ import PerfilScreen from '../screens/shared/PerfilScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-// ----------------------------
-// DASHBOARD
-// ----------------------------
+
 function DashboardStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -39,9 +37,8 @@ function DashboardStack() {
   );
 }
 
-// ----------------------------
+
 // USUARIOS
-// ----------------------------
 function UsuariosStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -64,9 +61,7 @@ function UsuariosStack() {
   );
 }
 
-// ----------------------------
 // PACIENTES
-// ----------------------------
 function PacientesStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -89,9 +84,7 @@ function PacientesStack() {
   );
 }
 
-// ----------------------------
 // CITAS
-// ----------------------------
 function CitasStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -109,9 +102,8 @@ function CitasStack() {
   );
 }
 
-// ----------------------------
+
 // PERFIL / CERRAR SESIÓN
-// ----------------------------
 function PerfilStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: true }}>
@@ -124,9 +116,8 @@ function PerfilStack() {
   );
 }
 
-// ----------------------------
+
 // NAVEGADOR PRINCIPAL ADMIN
-// ----------------------------
 export default function AdminNavigator() {
   const { theme } = useTheme();
   

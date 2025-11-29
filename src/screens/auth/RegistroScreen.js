@@ -36,17 +36,16 @@ const RegistroScreen = ({ navigation }) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // ========================================
-  // ✅ VALIDAR FORMULARIO
-  // ========================================
+
+  // VALIDAR FORMULARIO
+
   const validarFormulario = () => {
-    // Validar campos obligatorios
+
     if (!formData.nombre.trim() || !formData.apellido.trim()) {
       Alert.alert('Error', 'Nombre y apellido son obligatorios');
       return false;
     }
 
-    // Validar que nombre y apellido solo tengan letras
     const soloLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
     if (!soloLetras.test(formData.nombre)) {
       Alert.alert('Error', 'El nombre solo debe contener letras');
@@ -57,7 +56,6 @@ const RegistroScreen = ({ navigation }) => {
       return false;
     }
 
-    // Validar email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       Alert.alert('Error', 'Por favor ingresa un email válido');
@@ -70,19 +68,18 @@ const RegistroScreen = ({ navigation }) => {
       return false;
     }
 
-    // Validar que las contraseñas coincidan
     if (formData.password !== formData.confirmarPassword) {
       Alert.alert('Error', 'Las contraseñas no coinciden');
       return false;
     }
 
-    // Validar teléfono (si se proporciona)
+    // Validar teléfono 
     if (formData.telefono && formData.telefono.length < 10) {
       Alert.alert('Error', 'El teléfono debe tener al menos 10 dígitos');
       return false;
     }
 
-    // Validar fecha de nacimiento (si se proporciona)
+    // Validar fecha de nacimiento 
     if (formData.fechaNacimiento) {
       const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!fechaRegex.test(formData.fechaNacimiento)) {
@@ -107,9 +104,9 @@ const RegistroScreen = ({ navigation }) => {
     return true;
   };
 
-  // ========================================
-  // 📝 MANEJAR REGISTRO
-  // ========================================
+
+  //  REGISTRO
+
   const handleRegistro = async () => {
     if (!validarFormulario()) {
       return;
@@ -118,7 +115,6 @@ const RegistroScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-      // Preparar datos para el registro
       const datosRegistro = {
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
@@ -129,11 +125,11 @@ const RegistroScreen = ({ navigation }) => {
         genero: formData.genero,
       };
 
-      console.log('📤 Enviando registro:', datosRegistro);
+      console.log(' Enviando registro:', datosRegistro);
 
       const response = await authAPI.registroPaciente(datosRegistro);
 
-      console.log('✅ Registro exitoso:', response);
+      console.log(' Registro exitoso:', response);
 
       Alert.alert(
         '¡Registro Exitoso!',
@@ -146,7 +142,7 @@ const RegistroScreen = ({ navigation }) => {
         ]
       );
     } catch (error) {
-      console.error('❌ Error en registro:', error);
+      console.error(' Error en registro:', error);
       
       let mensaje = 'No se pudo completar el registro';
       

@@ -32,7 +32,6 @@ const EditarUsuarioScreen = ({ route, navigation }) => {
     }
   };
 
-  // ✅ GUARDAR CAMBIOS - FUNCIONAL
   const handleGuardar = async () => {
     if (!nombre.trim() || !apellido.trim()) {
       Alert.alert("Error", "Nombre y apellido son obligatorios");
@@ -49,7 +48,7 @@ const EditarUsuarioScreen = ({ route, navigation }) => {
         especialidad: especialidad.trim() || null,
       };
 
-      console.log("📝 Actualizando usuario:", usuario.id, datos);
+      console.log(" Actualizando usuario:", usuario.id, datos);
       
       await client.put(`/api/usuarios/${usuario.id}`, datos);
 
@@ -57,7 +56,7 @@ const EditarUsuarioScreen = ({ route, navigation }) => {
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      console.error("❌ Error:", error.response?.data || error.message);
+      console.error(" Error:", error.response?.data || error.message);
       Alert.alert("Error", error.response?.data?.detail || "No se pudo actualizar");
     } finally {
       setLoading(false);

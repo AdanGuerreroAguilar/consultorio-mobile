@@ -1,4 +1,3 @@
-// screens/admin/EditarPacienteScreen.js
 import React, { useState } from "react";
 import {
   View,
@@ -46,7 +45,6 @@ const EditarPacienteScreen = ({ route, navigation }) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  // ✅ GUARDAR CAMBIOS - FUNCIONAL
   const handleGuardar = async () => {
     if (!formData.nombre.trim() || !formData.apellido.trim()) {
       Alert.alert("Error", "Nombre y apellido son obligatorios");
@@ -70,7 +68,7 @@ const EditarPacienteScreen = ({ route, navigation }) => {
         telefono_emergencia: formData.telefono_emergencia.trim() || null,
       };
 
-      console.log("📝 Actualizando paciente:", paciente.id, datos);
+      console.log(" Actualizando paciente:", paciente.id, datos);
       
       await client.put(`/api/pacientes/${paciente.id}`, datos);
 
@@ -78,7 +76,7 @@ const EditarPacienteScreen = ({ route, navigation }) => {
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
-      console.error("❌ Error:", error.response?.data || error.message);
+      console.error(" Error:", error.response?.data || error.message);
       Alert.alert("Error", error.response?.data?.detail || "No se pudo actualizar");
     } finally {
       setLoading(false);
